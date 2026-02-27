@@ -1,20 +1,23 @@
-import { Search, MapPin, ShoppingCart, User, Menu, X } from "lucide-react";
+import { Search, MapPin, ShoppingCart, User, Menu, X, LogOut } from "lucide-react";
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
 import logoMo from "@/assets/logo-mo-alimenta.jpg";
 
 const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { user, signOut } = useAuth();
 
   return (
     <nav className="sticky top-0 z-50 bg-primary shadow-lg">
       <div className="container mx-auto px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-3">
+        <Link to="/" className="flex items-center gap-3">
           <img src={logoMo} alt="Mo Alimenta" className="h-10 w-10 rounded-full object-cover" />
           <span className="font-display text-xl font-bold text-primary-foreground hidden sm:block">
             Mo Alimenta
           </span>
-        </div>
+        </Link>
 
         {/* Search bar */}
         <div className="hidden md:flex flex-1 max-w-md mx-8">
@@ -36,12 +39,22 @@ const Navbar = () => {
 
         {/* Actions */}
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-forest-light">
-            <ShoppingCart className="h-5 w-5" />
-          </Button>
-          <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-forest-light">
-            <User className="h-5 w-5" />
-          </Button>
+          <Link to="/carrinho">
+            <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-forest-light">
+              <ShoppingCart className="h-5 w-5" />
+            </Button>
+          </Link>
+          {user ? (
+            <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-forest-light" onClick={signOut}>
+              <LogOut className="h-5 w-5" />
+            </Button>
+          ) : (
+            <Link to="/auth">
+              <Button variant="ghost" size="icon" className="text-primary-foreground hover:bg-forest-light">
+                <User className="h-5 w-5" />
+              </Button>
+            </Link>
+          )}
           <Button
             variant="ghost"
             size="icon"
