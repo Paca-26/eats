@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import heroFood from "@/assets/hero-food.jpg";
 import logoCircle from "@/assets/logo-mo-circle.jpg";
 import { Button } from "@/components/ui/button";
@@ -23,12 +24,16 @@ const HeroSection = () => {
             Compre de várias lojas e receba numa única entrega.
           </p>
           <div className="flex flex-wrap gap-3">
-            <Button className="bg-accent text-accent-foreground hover:bg-accent/90 rounded-full px-8 py-6 text-base font-semibold gap-2">
-              Explorar Lojas <ArrowRight className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" className="rounded-full px-8 py-6 text-base border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10">
-              Como Funciona
-            </Button>
+            <Link to="/categoria/restaurantes">
+              <Button className="bg-accent text-accent-foreground hover:bg-accent/90 rounded-full px-8 py-6 text-base font-semibold gap-2">
+                Explorar Lojas <ArrowRight className="h-4 w-4" />
+              </Button>
+            </Link>
+            <a href="#como-funciona">
+              <Button variant="outline" className="rounded-full px-8 py-6 text-base border-primary-foreground/30 text-primary-foreground hover:bg-primary-foreground/10">
+                Como Funciona
+              </Button>
+            </a>
           </div>
         </div>
 

@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import categoryTalho from "@/assets/category-talho.jpg";
 import categoryPeixaria from "@/assets/category-peixaria.jpg";
 import categoryMercearia from "@/assets/category-mercearia.jpg";
@@ -5,11 +6,11 @@ import categoryRestaurante from "@/assets/category-restaurante.jpg";
 import categorySupermercado from "@/assets/category-supermercado.jpg";
 
 const categories = [
-  { name: "Talhos", image: categoryTalho, count: 8 },
-  { name: "Peixarias", image: categoryPeixaria, count: 5 },
-  { name: "Mercearias", image: categoryMercearia, count: 12 },
-  { name: "Restaurantes", image: categoryRestaurante, count: 6 },
-  { name: "Supermercados", image: categorySupermercado, count: 4 },
+  { name: "Talhos", slug: "talhos", image: categoryTalho, count: 8 },
+  { name: "Peixarias", slug: "peixarias", image: categoryPeixaria, count: 5 },
+  { name: "Mercearias", slug: "mercearias", image: categoryMercearia, count: 12 },
+  { name: "Restaurantes", slug: "restaurantes", image: categoryRestaurante, count: 6 },
+  { name: "Supermercados", slug: "supermercados", image: categorySupermercado, count: 4 },
 ];
 
 const CategoriesSection = () => {
@@ -26,9 +27,10 @@ const CategoriesSection = () => {
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
         {categories.map((cat, i) => (
-          <button
+          <Link
             key={cat.name}
-            className="group relative rounded-2xl overflow-hidden aspect-square shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1 animate-fade-in cursor-pointer"
+            to={`/categoria/${cat.slug}`}
+            className="group relative rounded-2xl overflow-hidden aspect-square shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1 animate-fade-in cursor-pointer block"
             style={{ animationDelay: `${i * 0.1}s` }}
           >
             <img
@@ -41,7 +43,7 @@ const CategoriesSection = () => {
               <h3 className="font-display text-lg font-semibold">{cat.name}</h3>
               <p className="text-sm text-primary-foreground/70 font-body">{cat.count} lojas</p>
             </div>
-          </button>
+          </Link>
         ))}
       </div>
     </section>
