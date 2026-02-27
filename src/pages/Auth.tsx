@@ -5,14 +5,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import logoMo from "@/assets/logo-mo-alimenta.jpg";
-import { Eye, EyeOff, ArrowLeft } from "lucide-react";
+import { Eye, EyeOff, ArrowLeft, ShoppingBag, Store, Truck } from "lucide-react";
 import { Link } from "react-router-dom";
+
+const roleOptions = [
+  { value: "client", label: "Cliente", description: "Comprar produtos e fazer encomendas", icon: ShoppingBag },
+  { value: "store", label: "Vendedor", description: "Gerir a minha loja e vender produtos", icon: Store },
+  { value: "logistics", label: "Logística", description: "Fazer entregas e gerir rotas", icon: Truck },
+] as const;
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
+  const [selectedRole, setSelectedRole] = useState<string>("client");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -26,14 +33,30 @@ const Auth = () => {
       if (isLogin) {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        toast({ title: "Bem-vindo de volta!" });
-        navigate("/");
+        
+        // Get user role and redirect accordingly
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: roles } = await supabase
+            .from("user_roles")
+            .select("role")
+            .eq("user_id", user.id)
+            .single();
+          
+          const role = roles?.role || "client";
+          toast({ title: "Bem-vindo de volta!" });
+          
+          if (role === "admin") navigate("/admin");
+          else if (role === "store") navigate("/vendedor");
+          else if (role === "logistics") navigate("/logistica");
+          else navigate("/");
+        }
       } else {
         const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            data: { full_name: fullName },
+            data: { full_name: fullName, role: selectedRole },
             emailRedirectTo: window.location.origin,
           },
         });
@@ -90,16 +113,45 @@ const Auth = () => {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {!isLogin && (
-              <div>
-                <label className="text-sm font-medium text-foreground font-body">Nome Completo</label>
-                <Input
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="O seu nome"
-                  required={!isLogin}
-                  className="mt-1"
-                />
-              </div>
+              <>
+                <div>
+                  <label className="text-sm font-medium text-foreground font-body">Nome Completo</label>
+                  <Input
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    placeholder="O seu nome"
+                    required={!isLogin}
+                    className="mt-1"
+                  />
+                </div>
+
+                {/* Role Selection */}
+                <div>
+                  <label className="text-sm font-medium text-foreground font-body">Tipo de Conta</label>
+                  <div className="grid grid-cols-3 gap-2 mt-2">
+                    {roleOptions.map((role) => {
+                      const Icon = role.icon;
+                      const isSelected = selectedRole === role.value;
+                      return (
+                        <button
+                          key={role.value}
+                          type="button"
+                          onClick={() => setSelectedRole(role.value)}
+                          className={`p-3 rounded-xl border-2 text-center transition-all ${
+                            isSelected
+                              ? "border-accent bg-accent/10 text-foreground"
+                              : "border-border bg-card text-muted-foreground hover:border-accent/40"
+                          }`}
+                        >
+                          <Icon className={`h-6 w-6 mx-auto mb-1 ${isSelected ? "text-accent" : ""}`} />
+                          <span className="text-xs font-semibold block">{role.label}</span>
+                          <span className="text-[10px] leading-tight block mt-0.5 opacity-70">{role.description}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </>
             )}
 
             <div>
