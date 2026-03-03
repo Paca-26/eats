@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Save, X } from "lucide-react";
 import { toast } from "sonner";
+import ImageUpload from "./ImageUpload";
 
 export interface Product {
   name: string;
@@ -12,6 +13,7 @@ export interface Product {
   stock: number;
   active: boolean;
   description?: string;
+  image_url?: string;
 }
 
 interface AddProductDialogProps {
@@ -19,16 +21,18 @@ interface AddProductDialogProps {
   onOpenChange: (open: boolean) => void;
   onAdd: (product: Product) => void;
   editProduct?: Product | null;
+  storeId?: string;
 }
 
 const categories = ["Pratos", "Bebidas", "Entradas", "Sobremesas", "Acompanhamentos"];
 
-const AddProductDialog = ({ open, onOpenChange, onAdd, editProduct }: AddProductDialogProps) => {
+const AddProductDialog = ({ open, onOpenChange, onAdd, editProduct, storeId }: AddProductDialogProps) => {
   const [name, setName] = useState(editProduct?.name || "");
   const [price, setPrice] = useState(editProduct?.price?.replace(/[^\d]/g, "") || "");
   const [category, setCategory] = useState(editProduct?.category || "Pratos");
   const [stock, setStock] = useState(editProduct?.stock?.toString() || "0");
   const [description, setDescription] = useState(editProduct?.description || "");
+  const [imageUrl, setImageUrl] = useState(editProduct?.image_url || "");
 
   const resetForm = () => {
     setName("");
@@ -36,6 +40,7 @@ const AddProductDialog = ({ open, onOpenChange, onAdd, editProduct }: AddProduct
     setCategory("Pratos");
     setStock("0");
     setDescription("");
+    setImageUrl("");
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -59,6 +64,7 @@ const AddProductDialog = ({ open, onOpenChange, onAdd, editProduct }: AddProduct
       stock: parseInt(stock) || 0,
       active: true,
       description: description.trim(),
+      image_url: imageUrl || undefined,
     });
 
     toast.success(editProduct ? "Produto atualizado!" : "Produto adicionado com sucesso!");
@@ -131,6 +137,17 @@ const AddProductDialog = ({ open, onOpenChange, onAdd, editProduct }: AddProduct
                 </button>
               ))}
             </div>
+          </div>
+
+          <div>
+            <label className="text-xs font-body font-medium text-muted-foreground block mb-1.5">Foto do Produto</label>
+            <ImageUpload
+              bucket="product-images"
+              folder={storeId || "general"}
+              currentUrl={imageUrl}
+              onUploaded={setImageUrl}
+              aspectRatio="square"
+            />
           </div>
 
           <div>

@@ -1,15 +1,17 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import DashboardShell from "@/components/DashboardShell";
 import BottomNav, { BottomNavItem } from "@/components/BottomNav";
 import StatCard from "@/components/StatCard";
 import AnimatedTabContent from "@/components/AnimatedTabContent";
-import { Package, ShoppingCart, Star, TrendingUp, Plus, BarChart3, Settings, MessageSquare, Grid3X3, Store, Eye, Clock, Edit, Trash2, Image, MapPin, Phone, Mail, Save, ChevronRight, AlertCircle, LogOut, ToggleLeft, ToggleRight } from "lucide-react";
+import { Package, ShoppingCart, Star, TrendingUp, Plus, BarChart3, Settings, MessageSquare, Grid3X3, Store, Eye, Clock, Edit, Trash2, MapPin, Phone, Mail, Save, LogOut, ToggleLeft, ToggleRight, Loader2 } from "lucide-react";
 import AddProductDialog, { type Product } from "@/components/vendor/AddProductDialog";
+import StoreSetupDialog from "@/components/vendor/StoreSetupDialog";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useDemoAuth } from "@/contexts/DemoAuthContext";
 import { useDisplayUser } from "@/hooks/useDisplayUser";
+import { supabase } from "@/integrations/supabase/client";
 import heroVendor from "@/assets/hero-vendor.jpg";
 
 const navItems: BottomNavItem[] = [
@@ -20,23 +22,92 @@ const navItems: BottomNavItem[] = [
   { label: "Definições", icon: Settings, id: "settings" },
 ];
 
+interface StoreData {
+  id: string;
+  name: string;
+  address: string | null;
+  phone: string | null;
+  description: string | null;
+  logo_url: string | null;
+  cover_url: string | null;
+  average_rating: number | null;
+  is_active: boolean;
+}
+
 const VendorDashboard = () => {
   const [activeTab, setActiveTab] = useState("home");
+  const [store, setStore] = useState<StoreData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [showSetup, setShowSetup] = useState(false);
+  const [userId, setUserId] = useState<string>("");
+
+  useEffect(() => {
+    const fetchStore = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      setUserId(user.id);
+
+      const { data } = await supabase
+        .from("stores")
+        .select("id, name, address, phone, description, logo_url, cover_url, average_rating, is_active")
+        .eq("owner_id", user.id)
+        .maybeSingle();
+
+      setStore(data);
+      setLoading(false);
+    };
+    fetchStore();
+  }, []);
+
+  const refreshStore = async () => {
+    const { data } = await supabase
+      .from("stores")
+      .select("id, name, address, phone, description, logo_url, cover_url, average_rating, is_active")
+      .eq("owner_id", userId)
+      .maybeSingle();
+    setStore(data);
+  };
+
+  if (loading) {
+    return (
+      <DashboardShell title="Painel Vendedor" bottomNav={<BottomNav items={navItems} activeId="home" onNavigate={() => {}} />}>
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </DashboardShell>
+    );
+  }
+
+  if (!store) {
+    return (
+      <DashboardShell title="Painel Vendedor" bottomNav={<BottomNav items={navItems} activeId="home" onNavigate={() => {}} />}>
+        <div className="container mx-auto px-4 py-12 text-center space-y-4">
+          <Store className="h-16 w-16 mx-auto text-muted-foreground/40" />
+          <h2 className="font-display text-2xl font-bold text-foreground">Bem-vindo ao seu Painel</h2>
+          <p className="text-muted-foreground font-body">Crie a sua loja para começar a vender.</p>
+          <Button onClick={() => setShowSetup(true)} className="rounded-xl h-12 gap-2 font-body bg-gradient-to-r from-amber-500 to-orange-500 text-white">
+            <Plus className="h-5 w-5" /> Criar Loja
+          </Button>
+          <StoreSetupDialog open={showSetup} onOpenChange={setShowSetup} onCreated={refreshStore} userId={userId} />
+        </div>
+      </DashboardShell>
+    );
+  }
 
   const renderContent = () => {
     switch (activeTab) {
-      case "home": return <VendorHome />;
-      case "products": return <VendorProducts />;
+      case "home": return <VendorHome store={store} />;
+      case "products": return <VendorProducts storeId={store.id} />;
       case "orders": return <VendorOrders />;
       case "reviews": return <VendorReviews />;
-      case "settings": return <VendorSettings />;
-      default: return <VendorHome />;
+      case "settings": return <VendorSettings store={store} onUpdated={refreshStore} />;
+      default: return <VendorHome store={store} />;
     }
   };
 
   return (
     <DashboardShell
-      title="Painel Vendedor"
+      title={store.name}
       bottomNav={<BottomNav items={navItems} activeId={activeTab} onNavigate={setActiveTab} />}
     >
       <div className="container mx-auto px-4 py-6">
@@ -48,31 +119,33 @@ const VendorDashboard = () => {
   );
 };
 
-const VendorHome = () => {
+const VendorHome = ({ store }: { store: StoreData }) => {
   const { name } = useDisplayUser();
   return (
   <div className="space-y-6">
     <div className="relative rounded-2xl overflow-hidden h-44">
-      <img src={heroVendor} alt="Loja" className="absolute inset-0 w-full h-full object-cover" />
+      <img src={store.cover_url || heroVendor} alt="Loja" className="absolute inset-0 w-full h-full object-cover" />
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/10" />
       <div className="relative z-10 p-6 h-full flex flex-col justify-end text-white">
         <p className="text-white/80 font-body text-sm">Painel do Vendedor</p>
         <h1 className="font-display text-2xl font-bold mt-1 flex items-center gap-2">
-          {name} <Store className="h-6 w-6" />
+          {store.name} <Store className="h-6 w-6" />
         </h1>
         <div className="flex items-center gap-3 mt-1.5">
-          <span className="bg-white/20 backdrop-blur-sm text-white text-xs font-body px-2.5 py-0.5 rounded-full flex items-center gap-1"><MapPin className="h-3 w-3" /> Maianga</span>
-          <span className="bg-amber-500/80 backdrop-blur-sm text-white text-xs font-body px-2.5 py-0.5 rounded-full flex items-center gap-1"><Star className="h-3 w-3 fill-white" /> 4.7</span>
-          <span className="bg-emerald-500/80 backdrop-blur-sm text-white text-xs font-body px-2.5 py-0.5 rounded-full">Aberta</span>
+          {store.address && (
+            <span className="bg-white/20 backdrop-blur-sm text-white text-xs font-body px-2.5 py-0.5 rounded-full flex items-center gap-1"><MapPin className="h-3 w-3" /> {store.address}</span>
+          )}
+          <span className="bg-amber-500/80 backdrop-blur-sm text-white text-xs font-body px-2.5 py-0.5 rounded-full flex items-center gap-1"><Star className="h-3 w-3 fill-white" /> {store.average_rating || 0}</span>
+          <span className={`backdrop-blur-sm text-white text-xs font-body px-2.5 py-0.5 rounded-full ${store.is_active ? "bg-emerald-500/80" : "bg-red-500/80"}`}>{store.is_active ? "Aberta" : "Fechada"}</span>
         </div>
       </div>
     </div>
 
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-      <StatCard label="Produtos" value="24" icon={Package} trend="+3" trendUp />
-      <StatCard label="Encomendas" value="12" icon={ShoppingCart} trend="+5 hoje" trendUp />
-      <StatCard label="Avaliação" value="4.7" icon={Star} />
-      <StatCard label="Receita" value="85K Kz" icon={TrendingUp} trend="+18%" trendUp />
+      <StatCard label="Produtos" value="--" icon={Package} />
+      <StatCard label="Encomendas" value="--" icon={ShoppingCart} />
+      <StatCard label="Avaliação" value={String(store.average_rating || 0)} icon={Star} />
+      <StatCard label="Receita" value="--" icon={TrendingUp} />
     </div>
 
     <div className="bg-card border border-border rounded-2xl p-5">
@@ -89,70 +162,68 @@ const VendorHome = () => {
         </Button>
       </div>
     </div>
-
-    <div className="bg-card border border-border rounded-2xl overflow-hidden">
-      <div className="p-4 border-b border-border flex items-center justify-between">
-        <h2 className="font-display text-lg font-bold text-foreground">Encomendas Recentes</h2>
-        <span className="bg-amber-100 text-amber-700 text-[10px] font-body font-bold px-2 py-0.5 rounded-full">3 novas</span>
-      </div>
-      <div className="divide-y divide-border">
-        {[
-          { id: "#2045", client: "Maria S.", items: "2x Frango, 1x Arroz", total: "4.500 Kz", status: "Nova", statusColor: "bg-amber-100 text-amber-700", time: "há 5 min" },
-          { id: "#2044", client: "Pedro M.", items: "3x Bifes, Salada", total: "7.200 Kz", status: "Preparando", statusColor: "bg-blue-100 text-blue-700", time: "há 20 min" },
-          { id: "#2043", client: "Ana L.", items: "1x Menu Completo", total: "3.800 Kz", status: "Pronto", statusColor: "bg-emerald-100 text-emerald-700", time: "há 45 min" },
-        ].map((order, i) => (
-          <div key={i} className="p-4 hover:bg-muted/50 transition-colors cursor-pointer">
-            <div className="flex items-center justify-between mb-1">
-              <div className="flex items-center gap-2">
-                <span className="font-body font-bold text-foreground text-sm">{order.id}</span>
-                <span className={`text-[10px] font-body font-semibold px-2 py-0.5 rounded-full ${order.statusColor}`}>{order.status}</span>
-              </div>
-              <span className="text-[10px] text-muted-foreground font-body">{order.time}</span>
-            </div>
-            <p className="text-xs text-muted-foreground font-body">{order.client} — {order.items}</p>
-            <p className="text-sm font-body font-semibold text-foreground mt-1">{order.total}</p>
-          </div>
-        ))}
-      </div>
-    </div>
-
-    <div className="grid grid-cols-2 gap-3">
-      <div className="bg-card border border-border rounded-2xl p-4">
-        <Eye className="h-5 w-5 text-accent mb-2" />
-        <span className="font-display font-bold text-foreground text-2xl block">342</span>
-        <span className="text-xs text-muted-foreground font-body">Visitas esta semana</span>
-      </div>
-      <div className="bg-card border border-border rounded-2xl p-4">
-        <Clock className="h-5 w-5 text-accent mb-2" />
-        <span className="font-display font-bold text-foreground text-2xl block">18 min</span>
-        <span className="text-xs text-muted-foreground font-body">Tempo médio de preparo</span>
-      </div>
-    </div>
   </div>
   );
 };
-const VendorProducts = () => {
-  const [products, setProducts] = useState<Product[]>([
-    { name: "Frango Grelhado", price: "2.500 Kz", category: "Pratos", stock: 15, active: true },
-    { name: "Arroz de Marisco", price: "4.800 Kz", category: "Pratos", stock: 8, active: true },
-    { name: "Sumo Natural", price: "800 Kz", category: "Bebidas", stock: 30, active: true },
-    { name: "Bife à Café", price: "3.200 Kz", category: "Pratos", stock: 0, active: false },
-    { name: "Salada Mista", price: "1.500 Kz", category: "Entradas", stock: 20, active: true },
-    { name: "Cerveja Cuca", price: "500 Kz", category: "Bebidas", stock: 50, active: true },
-  ]);
+
+const VendorProducts = ({ storeId }: { storeId: string }) => {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editIndex, setEditIndex] = useState<number | null>(null);
   const [activeFilter, setActiveFilter] = useState("Todos");
 
+  useEffect(() => {
+    fetchProducts();
+  }, [storeId]);
+
+  const fetchProducts = async () => {
+    const { data, error } = await supabase
+      .from("products")
+      .select("*")
+      .eq("store_id", storeId)
+      .order("created_at", { ascending: false });
+
+    if (data) {
+      setProducts(data.map(p => ({
+        name: p.name,
+        price: `${Number(p.price).toLocaleString("pt-AO")} Kz`,
+        category: "Pratos",
+        stock: p.stock_quantity || 0,
+        active: p.is_available,
+        description: p.description || "",
+        image_url: p.image_url || "",
+      })));
+    }
+    setLoading(false);
+  };
+
   const allCategories = ["Todos", ...Array.from(new Set(products.map((p) => p.category)))];
   const filtered = activeFilter === "Todos" ? products : products.filter((p) => p.category === activeFilter);
 
-  const handleAdd = (product: Product) => {
+  const handleAdd = async (product: Product) => {
+    const priceNum = Number(product.price.replace(/[^\d]/g, ""));
+
     if (editIndex !== null) {
+      // For now, just update locally
       setProducts((prev) => prev.map((p, i) => (i === editIndex ? product : p)));
       setEditIndex(null);
     } else {
-      setProducts((prev) => [product, ...prev]);
+      const { error } = await supabase.from("products").insert({
+        name: product.name,
+        price: priceNum,
+        store_id: storeId,
+        stock_quantity: product.stock,
+        is_available: product.active,
+        description: product.description || null,
+        image_url: product.image_url || null,
+      });
+
+      if (error) {
+        toast.error("Erro ao adicionar produto");
+        return;
+      }
+      fetchProducts();
     }
   };
 
@@ -172,6 +243,10 @@ const VendorProducts = () => {
     setEditIndex(realIndex);
     setDialogOpen(true);
   };
+
+  if (loading) {
+    return <div className="flex items-center justify-center h-40"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
+  }
 
   return (
     <div className="space-y-5">
@@ -195,7 +270,13 @@ const VendorProducts = () => {
         <div className="space-y-2">
           {filtered.map((p, i) => (
             <div key={i} className={`bg-card border border-border rounded-2xl p-4 flex items-center gap-4 transition-all hover:shadow-md ${!p.active ? "opacity-60" : ""}`}>
-              <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center"><Image className="h-5 w-5 text-muted-foreground" /></div>
+              <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center overflow-hidden">
+                {p.image_url ? (
+                  <img src={p.image_url} alt={p.name} className="w-full h-full object-cover" />
+                ) : (
+                  <Package className="h-5 w-5 text-muted-foreground" />
+                )}
+              </div>
               <div className="flex-1 min-w-0">
                 <span className="font-display font-bold text-foreground text-sm block">{p.name}</span>
                 <span className="text-xs text-muted-foreground font-body">{p.category} · Stock: {p.stock}</span>
@@ -217,6 +298,7 @@ const VendorProducts = () => {
         onOpenChange={setDialogOpen}
         onAdd={handleAdd}
         editProduct={editIndex !== null ? products[editIndex] : null}
+        storeId={storeId}
       />
     </div>
   );
@@ -317,19 +399,26 @@ const VendorReviews = () => {
   );
 };
 
-const VendorSettings = () => {
-  const { name, email } = useDisplayUser();
+const VendorSettings = ({ store, onUpdated }: { store: StoreData; onUpdated: () => void }) => {
+  const { email } = useDisplayUser();
   return (
   <div className="space-y-5">
     <h2 className="font-display text-2xl font-bold text-foreground">Definições da Loja</h2>
+    
+    {store.cover_url && (
+      <div className="rounded-2xl overflow-hidden h-32 border border-border">
+        <img src={store.cover_url} alt="Capa" className="w-full h-full object-cover" />
+      </div>
+    )}
+    
     <div className="bg-card border border-border rounded-2xl p-5">
       <h3 className="font-display font-bold text-foreground mb-4">Informações Gerais</h3>
       <div className="space-y-4">
         {[
-          { label: "Nome da Loja", value: name, icon: Store },
-          { label: "Endereço", value: "Rua Principal, Maianga, Luanda", icon: MapPin },
-          { label: "Telefone", value: "+244 923 111 222", icon: Phone },
-          { label: "Email", value: email || "joao@demo.ao", icon: Mail },
+          { label: "Nome da Loja", value: store.name, icon: Store },
+          { label: "Endereço", value: store.address || "Não definido", icon: MapPin },
+          { label: "Telefone", value: store.phone || "Não definido", icon: Phone },
+          { label: "Email", value: email || "—", icon: Mail },
         ].map((field) => {
           const Icon = field.icon;
           return (
@@ -363,7 +452,7 @@ const VendorSettings = () => {
     <div className="bg-card border border-border rounded-2xl overflow-hidden divide-y divide-border">
       {[
         { label: "Receber notificações", desc: "Alertas de novas encomendas", active: true },
-        { label: "Loja visível", desc: "Aparecer nos resultados de pesquisa", active: true },
+        { label: "Loja visível", desc: "Aparecer nos resultados de pesquisa", active: store.is_active },
         { label: "Aceitar encomendas", desc: "Permitir novos pedidos", active: true },
       ].map((toggle) => (
         <div key={toggle.label} className="flex items-center justify-between p-4">

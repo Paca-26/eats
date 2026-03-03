@@ -45,9 +45,9 @@ const Auth = () => {
         const { data: authData, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
 
-        // Fetch user role from profiles
-        const { data: profile } = await supabase
-          .from("profiles")
+        // Fetch user role from user_roles
+        const { data: roleData } = await supabase
+          .from("user_roles")
           .select("role")
           .eq("user_id", authData.user.id)
           .single();
@@ -58,8 +58,9 @@ const Auth = () => {
           client: "/cliente",
           store: "/vendedor",
           logistics: "/logistica",
+          admin: "/admin",
         };
-        navigate(roleRoute[profile?.role ?? "client"] ?? "/cliente");
+        navigate(roleRoute[roleData?.role ?? "client"] ?? "/cliente");
       } else {
         const { error } = await supabase.auth.signUp({
           email,
