@@ -7,6 +7,7 @@ import AnimatedTabContent from "@/components/AnimatedTabContent";
 import { Package, ShoppingCart, Star, TrendingUp, Plus, BarChart3, Settings, MessageSquare, Grid3X3, Store, Eye, Clock, Edit, Trash2, MapPin, Phone, Mail, Save, LogOut, ToggleLeft, ToggleRight, Loader2 } from "lucide-react";
 import AddProductDialog, { type Product } from "@/components/vendor/AddProductDialog";
 import StoreSetupDialog from "@/components/vendor/StoreSetupDialog";
+import ImageUpload from "@/components/vendor/ImageUpload";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useDemoAuth } from "@/contexts/DemoAuthContext";
@@ -445,39 +446,101 @@ const VendorReviews = () => {
 
 const VendorSettings = ({ store, onUpdated }: { store: StoreData; onUpdated: () => void }) => {
   const { email } = useDisplayUser();
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    name: store.name || "",
+    address: store.address || "",
+    phone: store.phone || "",
+    cover_url: store.cover_url || ""
+  });
+
+  const handleSave = async () => {
+    setLoading(true);
+    const { error } = await supabase
+      .from("stores")
+      .update({
+        name: formData.name,
+        address: formData.address,
+        phone: formData.phone,
+        cover_url: formData.cover_url,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", store.id);
+
+    if (error) {
+      toast.error("Erro ao guardar alterações");
+    } else {
+      toast.success("Definições actualizadas");
+      onUpdated();
+    }
+    setLoading(false);
+  };
+
   return (
     <div className="space-y-5">
       <h2 className="font-display text-2xl font-bold text-foreground">Definições da Loja</h2>
 
-      {store.cover_url && (
-        <div className="rounded-2xl overflow-hidden h-32 border border-border">
-          <img src={store.cover_url} alt="Capa" className="w-full h-full object-cover" />
-        </div>
-      )}
+      <div className="space-y-2">
+        <label className="text-xs font-body font-semibold text-muted-foreground ml-1">Foto de Capa</label>
+        <ImageUpload
+          bucket="store-images"
+          folder={store.id}
+          currentUrl={formData.cover_url}
+          onUploaded={(url) => setFormData(prev => ({ ...prev, cover_url: url }))}
+          aspectRatio="wide"
+          className="w-full"
+        />
+      </div>
 
       <div className="bg-card border border-border rounded-2xl p-5">
         <h3 className="font-display font-bold text-foreground mb-4">Informações Gerais</h3>
         <div className="space-y-4">
-          {[
-            { label: "Nome da Loja", value: store.name, icon: Store },
-            { label: "Endereço", value: store.address || "Não definido", icon: MapPin },
-            { label: "Telefone", value: store.phone || "Não definido", icon: Phone },
-            { label: "Email", value: email || "—", icon: Mail },
-          ].map((field) => {
-            const Icon = field.icon;
-            return (
-              <div key={field.label} className="flex items-center gap-3 p-3 bg-muted/50 rounded-xl">
-                <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
-                <div className="flex-1">
-                  <span className="text-[10px] text-muted-foreground font-body block">{field.label}</span>
-                  <span className="text-sm font-body text-foreground">{field.value}</span>
-                </div>
-                <Edit className="h-3.5 w-3.5 text-muted-foreground cursor-pointer" />
-              </div>
-            );
-          })}
+          <div className="space-y-1.5">
+            <label className="text-xs font-body font-semibold text-muted-foreground ml-1">Nome da Loja</label>
+            <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-xl">
+              <Store className="h-4 w-4 text-muted-foreground shrink-0" />
+              <input
+                value={formData.name}
+                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                className="bg-transparent border-none focus:ring-0 text-sm font-body text-foreground w-full p-0"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-body font-semibold text-muted-foreground ml-1">Endereço</label>
+            <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-xl">
+              <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
+              <input
+                value={formData.address}
+                onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
+                className="bg-transparent border-none focus:ring-0 text-sm font-body text-foreground w-full p-0"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-body font-semibold text-muted-foreground ml-1">Telefone</label>
+            <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-xl">
+              <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+              <input
+                value={formData.phone}
+                onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                className="bg-transparent border-none focus:ring-0 text-sm font-body text-foreground w-full p-0"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-body font-semibold text-muted-foreground ml-1">Email (não editável)</label>
+            <div className="flex items-center gap-3 p-3 bg-muted/10 rounded-xl opacity-60">
+              <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+              <span className="text-sm font-body text-foreground">{email || "—"}</span>
+            </div>
+          </div>
         </div>
       </div>
+
       <div className="bg-card border border-border rounded-2xl p-5">
         <h3 className="font-display font-bold text-foreground mb-4">Horário de Funcionamento</h3>
         <div className="space-y-2">
@@ -510,8 +573,13 @@ const VendorSettings = ({ store, onUpdated }: { store: StoreData; onUpdated: () 
           </div>
         ))}
       </div>
-      <Button className="w-full rounded-xl h-12 gap-2 font-body bg-gradient-to-r from-amber-500 to-orange-500 text-white">
-        <Save className="h-4 w-4" /> Guardar Alterações
+      <Button
+        onClick={handleSave}
+        disabled={loading}
+        className="w-full rounded-xl h-12 gap-2 font-body bg-gradient-to-r from-amber-500 to-orange-500 text-white"
+      >
+        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+        Guardar Alterações
       </Button>
       <VendorLogoutButton />
     </div>
