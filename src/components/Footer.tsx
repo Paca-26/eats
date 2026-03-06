@@ -8,8 +8,8 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="space-y-4">
             <Link to="/" className="flex items-center gap-3">
-              <img src={logoMo} alt="asap" className="h-10 w-10 rounded-full object-cover" />
-              <span className="font-display text-xl font-bold">asap</span>
+              <img src={logoMo} alt="Mmm" className="h-10 w-10 rounded-full object-cover" />
+              <span className="font-display text-xl font-bold">Mmm</span>
             </Link>
             <p className="text-primary-foreground/70 text-sm font-body">
               O Shopping Digital Alimentar de Angola. Supermercados, talhos, peixarias e restaurantes num só lugar.
@@ -47,7 +47,7 @@ const Footer = () => {
         </div>
 
         <div className="border-t border-primary-foreground/10 mt-10 pt-6 text-center text-sm text-primary-foreground/50 font-body">
-          © 2026 asap. Todos os direitos reservados. Logística por K.
+          © 2026 Mmm. Todos os direitos reservados. Logística por K.
         </div>
       </div>
     </footer>

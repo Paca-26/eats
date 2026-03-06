@@ -18,9 +18,9 @@ const Navbar = () => {
     <nav className="sticky top-0 z-50 bg-primary shadow-lg">
       <div className="container mx-auto px-4 py-3 flex items-center justify-between">
         <Link to="/" className="flex items-center gap-3">
-          <img src={logoMo} alt="asap" className="h-10 w-10 rounded-full object-cover" />
-          <span className="font-display text-xl font-bold text-primary-foreground hidden sm:block">
-            asap
+          <img src={logoMo} alt="Mmm" className="h-10 w-10 rounded-full object-cover" />
+          <span className="font-display text-xl font-bold tracking-tight text-white sm:text-2xl">
+            Mmm
           </span>
         </Link>
 

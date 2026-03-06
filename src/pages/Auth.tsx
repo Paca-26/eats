@@ -100,7 +100,7 @@ const Auth = () => {
             className="relative inline-block mb-5"
           >
             <div className="absolute -inset-3 bg-gradient-to-r from-accent/20 to-primary/20 rounded-full blur-xl animate-pulse" />
-            <img src={logoMo} alt="asap" className="relative h-18 w-18 rounded-2xl object-cover shadow-lg ring-4 ring-background" />
+            <img src={logoMo} alt="Mmm" className="relative h-18 w-18 rounded-2xl object-cover shadow-lg ring-4 ring-background" />
           </motion.div>
           <motion.h1
             initial={{ opacity: 0, y: 8 }}
@@ -116,7 +116,7 @@ const Auth = () => {
             transition={{ delay: 0.3 }}
             className="text-muted-foreground mt-2 font-body text-sm"
           >
-            {isLogin ? "Entre na sua conta para continuar" : "Registe-se para começar a usar o asap"}
+            {isLogin ? "Entre na sua conta para continuar" : "Registe-se para começar a usar o Mmm"}
           </motion.p>
         </div>
 
@@ -170,11 +170,10 @@ const Auth = () => {
                         key={opt.value}
                         type="button"
                         onClick={() => setRole(opt.value)}
-                        className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all duration-200 ${
-                          selected
+                        className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all duration-200 ${selected
                             ? "border-accent bg-accent/10 shadow-sm"
                             : "border-border bg-background hover:border-accent/30"
-                        }`}
+                          }`}
                       >
                         <Icon className={`h-5 w-5 ${selected ? "text-accent" : "text-muted-foreground"}`} />
                         <span className={`text-xs font-body font-semibold ${selected ? "text-accent" : "text-foreground"}`}>{opt.label}</span>

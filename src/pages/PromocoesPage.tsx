@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 
 const promos = [
   { title: "20% em Frescos", desc: "Frutas, legumes e verduras com desconto em supermercados seleccionados.", badge: "Supermercados", color: "bg-green-500/10 text-green-700", expires: "Válido até 15 Mar" },
-  { title: "Entrega Grátis", desc: "Primeira encomenda sem custos de entrega. Use o código ASAP1.", badge: "Novos Clientes", color: "bg-blue-500/10 text-blue-700", expires: "Sem prazo" },
+  { title: "Entrega Grátis", desc: "Primeira encomenda sem custos de entrega. Use o código MMM1.", badge: "Novos Clientes", color: "bg-blue-500/10 text-blue-700", expires: "Sem prazo" },
   { title: "Combo Familiar", desc: "Pacote de carne + peixe + acompanhamentos por 8.500 Kz.", badge: "Talhos & Peixarias", color: "bg-red-500/10 text-red-700", expires: "Válido até 20 Mar" },
   { title: "Almoço a 1.500 Kz", desc: "Pratos do dia em restaurantes parceiros com preço especial.", badge: "Restaurantes", color: "bg-amber-500/10 text-amber-700", expires: "Seg–Sex, 11h–14h" },
   { title: "Compre 3, Pague 2", desc: "Em produtos de mercearia seleccionados. Desconto aplicado automaticamente.", badge: "Mercearias", color: "bg-purple-500/10 text-purple-700", expires: "Válido até 31 Mar" },

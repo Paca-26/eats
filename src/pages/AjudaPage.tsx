@@ -61,7 +61,7 @@ const AjudaPage = () => {
           {[
             { icon: MessageCircle, label: "Chat ao Vivo", desc: "Resposta em minutos" },
             { icon: Phone, label: "+244 923 000 000", desc: "Seg–Sex, 8h–18h" },
-            { icon: Mail, label: "suporte@asap.ao", desc: "Resposta em 24h" },
+            { icon: Mail, label: "suporte@mmm.ao", desc: "Resposta em 24h" },
           ].map((c, i) => (
             <div key={i} className="flex flex-col items-center text-center p-6 rounded-xl border border-border hover:shadow-md transition-shadow">
               <c.icon className="h-8 w-8 text-accent mb-3" />

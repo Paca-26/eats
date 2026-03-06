@@ -62,7 +62,7 @@ const ContactoPage = () => {
             {[
               { icon: MapPin, label: "Morada", value: "Talatona, Luanda Sul, Angola" },
               { icon: Phone, label: "Telefone", value: "+244 923 000 000" },
-              { icon: Mail, label: "Email", value: "geral@asap.ao" },
+              { icon: Mail, label: "Email", value: "geral@mmm.ao" },
             ].map((item, i) => (
               <div key={i} className="flex items-start gap-4 p-4 rounded-xl border border-border">
                 <item.icon className="h-6 w-6 text-accent mt-0.5" />

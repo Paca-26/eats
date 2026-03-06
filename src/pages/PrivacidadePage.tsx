@@ -7,7 +7,7 @@ const sections = [
   { title: "3. Partilha de Dados", content: "Partilhamos dados limitados com parceiros logísticos (morada de entrega) e lojas (detalhes do pedido) estritamente necessários para a prestação do serviço. Nunca vendemos dados pessoais a terceiros." },
   { title: "4. Segurança", content: "Utilizamos encriptação SSL, armazenamento seguro e práticas de segurança actualizadas para proteger os seus dados contra acessos não autorizados." },
   { title: "5. Cookies", content: "Utilizamos cookies essenciais para o funcionamento da plataforma e cookies analíticos para melhorar o serviço. Pode gerir as suas preferências de cookies nas definições do navegador." },
-  { title: "6. Direitos do Utilizador", content: "Tem o direito de aceder, rectificar ou eliminar os seus dados pessoais a qualquer momento. Para exercer estes direitos, contacte-nos através de privacidade@asap.ao." },
+  { title: "6. Direitos do Utilizador", content: "Tem o direito de aceder, rectificar ou eliminar os seus dados pessoais a qualquer momento. Para exercer estes direitos, contacte-nos através de privacidade@mmm.ao." },
   { title: "7. Retenção de Dados", content: "Mantemos os seus dados enquanto a sua conta estiver activa. Após eliminação da conta, os dados são removidos no prazo de 30 dias, excepto quando exigido por lei." },
   { title: "8. Alterações", content: "Esta política pode ser actualizada periodicamente. Notificaremos os utilizadores sobre alterações significativas por email ou notificação na plataforma." },
 ];

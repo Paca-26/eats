@@ -34,7 +34,7 @@ const AdminDashboard = () => {
 
   return (
     <DashboardShell
-      title="Admin asap"
+      title="Admin Mmm"
       bottomNav={<BottomNav items={navItems} activeId={activeTab} onNavigate={setActiveTab} />}
     >
       <div className="container mx-auto px-4 py-6">
@@ -49,78 +49,78 @@ const AdminDashboard = () => {
 const AdminHome = () => {
   const { name } = useDisplayUser();
   return (
-  <div className="space-y-6">
-    <div className="relative rounded-2xl overflow-hidden h-44">
-      <img src={heroAdmin} alt="Admin" className="absolute inset-0 w-full h-full object-cover" />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/10" />
-      <div className="relative z-10 p-6 h-full flex flex-col justify-end text-white">
-        <p className="text-white/80 font-body text-sm">Administração</p>
-        <h1 className="font-display text-2xl font-bold mt-1 flex items-center gap-2">{name} <ShieldCheck className="h-6 w-6" /></h1>
-        <div className="flex items-center gap-3 mt-1.5">
-          <span className="bg-white/20 backdrop-blur-sm text-white text-xs font-body px-2.5 py-0.5 rounded-full">Gestão central</span>
-          <span className="bg-purple-500/80 backdrop-blur-sm text-white text-xs font-body px-2.5 py-0.5 rounded-full flex items-center gap-1"><Users className="h-3 w-3" /> 128 users</span>
-          <span className="bg-emerald-500/80 backdrop-blur-sm text-white text-xs font-body px-2.5 py-0.5 rounded-full flex items-center gap-1"><Store className="h-3 w-3" /> 24 lojas</span>
+    <div className="space-y-6">
+      <div className="relative rounded-2xl overflow-hidden h-44">
+        <img src={heroAdmin} alt="Admin" className="absolute inset-0 w-full h-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/10" />
+        <div className="relative z-10 p-6 h-full flex flex-col justify-end text-white">
+          <p className="text-white/80 font-body text-sm">Administração</p>
+          <h1 className="font-display text-2xl font-bold mt-1 flex items-center gap-2">{name} <ShieldCheck className="h-6 w-6" /></h1>
+          <div className="flex items-center gap-3 mt-1.5">
+            <span className="bg-white/20 backdrop-blur-sm text-white text-xs font-body px-2.5 py-0.5 rounded-full">Gestão central</span>
+            <span className="bg-purple-500/80 backdrop-blur-sm text-white text-xs font-body px-2.5 py-0.5 rounded-full flex items-center gap-1"><Users className="h-3 w-3" /> 128 users</span>
+            <span className="bg-emerald-500/80 backdrop-blur-sm text-white text-xs font-body px-2.5 py-0.5 rounded-full flex items-center gap-1"><Store className="h-3 w-3" /> 24 lojas</span>
+          </div>
         </div>
       </div>
-    </div>
-    <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center gap-3">
-      <AlertCircle className="h-5 w-5 text-amber-600 shrink-0" />
-      <p className="text-sm font-body text-amber-800"><span className="font-semibold">3 lojas</span> aguardam aprovação. <span className="font-semibold cursor-pointer underline">Rever agora →</span></p>
-    </div>
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-      <StatCard label="Utilizadores" value="128" icon={Users} trend="+12%" trendUp />
-      <StatCard label="Lojas Activas" value="24" icon={Store} trend="+3" trendUp />
-      <StatCard label="Encomendas Hoje" value="47" icon={Package} trend="+18%" trendUp />
-      <StatCard label="Receita Mensal" value="2.4M Kz" icon={TrendingUp} trend="+8%" trendUp />
-    </div>
-    <div className="bg-card border border-border rounded-2xl overflow-hidden">
-      <div className="p-4 border-b border-border"><h2 className="font-display text-lg font-bold text-foreground">Actividade Recente</h2></div>
-      <div className="divide-y divide-border">
-        {[
-          { text: "Nova loja registada: Supermercado Kero", time: "há 2min", dot: "bg-emerald-500" },
-          { text: "Encomenda #1042 entregue com sucesso", time: "há 15min", dot: "bg-blue-500" },
-          { text: "Novo utilizador: João M. (Cliente)", time: "há 1h", dot: "bg-purple-500" },
-          { text: "Reclamação recebida: Encomenda #1038", time: "há 2h", dot: "bg-red-500" },
-          { text: "Loja 'Mercearia Central' actualizada", time: "há 3h", dot: "bg-amber-500" },
-        ].map((item, i) => (
-          <div key={i} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors cursor-pointer">
-            <div className={`h-2.5 w-2.5 rounded-full ${item.dot} shrink-0`} />
-            <span className="text-sm font-body text-foreground flex-1">{item.text}</span>
-            <span className="text-xs text-muted-foreground font-body">{item.time}</span>
-          </div>
-        ))}
+      <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center gap-3">
+        <AlertCircle className="h-5 w-5 text-amber-600 shrink-0" />
+        <p className="text-sm font-body text-amber-800"><span className="font-semibold">3 lojas</span> aguardam aprovação. <span className="font-semibold cursor-pointer underline">Rever agora →</span></p>
       </div>
-    </div>
-    <div className="grid grid-cols-2 gap-3">
-      <div className="bg-card border border-border rounded-2xl p-4">
-        <Eye className="h-5 w-5 text-accent mb-2" />
-        <span className="font-display font-bold text-foreground text-2xl block">1.2K</span>
-        <span className="text-xs text-muted-foreground font-body">Visitas hoje</span>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <StatCard label="Utilizadores" value="128" icon={Users} trend="+12%" trendUp />
+        <StatCard label="Lojas Activas" value="24" icon={Store} trend="+3" trendUp />
+        <StatCard label="Encomendas Hoje" value="47" icon={Package} trend="+18%" trendUp />
+        <StatCard label="Receita Mensal" value="2.4M Kz" icon={TrendingUp} trend="+8%" trendUp />
       </div>
-      <div className="bg-card border border-border rounded-2xl p-4">
-        <Star className="h-5 w-5 text-accent mb-2" />
-        <span className="font-display font-bold text-foreground text-2xl block">4.6</span>
-        <span className="text-xs text-muted-foreground font-body">Avaliação média</span>
-      </div>
-    </div>
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      {[
-        { title: "Zonas de Entrega", desc: "Configurar zonas e taxas de delivery.", icon: MapPin },
-        { title: "Segurança", desc: "Logs de acesso e permissões.", icon: Shield },
-      ].map((card) => {
-        const Icon = card.icon;
-        return (
-          <div key={card.title} className="bg-card border border-border rounded-2xl p-5 hover:shadow-md transition-shadow cursor-pointer group">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="p-2 rounded-xl bg-purple-100"><Icon className="h-5 w-5 text-purple-600" /></div>
-              <h3 className="font-display font-bold text-foreground">{card.title}</h3>
+      <div className="bg-card border border-border rounded-2xl overflow-hidden">
+        <div className="p-4 border-b border-border"><h2 className="font-display text-lg font-bold text-foreground">Actividade Recente</h2></div>
+        <div className="divide-y divide-border">
+          {[
+            { text: "Nova loja registada: Supermercado Kero", time: "há 2min", dot: "bg-emerald-500" },
+            { text: "Encomenda #1042 entregue com sucesso", time: "há 15min", dot: "bg-blue-500" },
+            { text: "Novo utilizador: João M. (Cliente)", time: "há 1h", dot: "bg-purple-500" },
+            { text: "Reclamação recebida: Encomenda #1038", time: "há 2h", dot: "bg-red-500" },
+            { text: "Loja 'Mercearia Central' actualizada", time: "há 3h", dot: "bg-amber-500" },
+          ].map((item, i) => (
+            <div key={i} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors cursor-pointer">
+              <div className={`h-2.5 w-2.5 rounded-full ${item.dot} shrink-0`} />
+              <span className="text-sm font-body text-foreground flex-1">{item.text}</span>
+              <span className="text-xs text-muted-foreground font-body">{item.time}</span>
             </div>
-            <p className="text-sm text-muted-foreground font-body">{card.desc}</p>
-          </div>
-        );
-      })}
+          ))}
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="bg-card border border-border rounded-2xl p-4">
+          <Eye className="h-5 w-5 text-accent mb-2" />
+          <span className="font-display font-bold text-foreground text-2xl block">1.2K</span>
+          <span className="text-xs text-muted-foreground font-body">Visitas hoje</span>
+        </div>
+        <div className="bg-card border border-border rounded-2xl p-4">
+          <Star className="h-5 w-5 text-accent mb-2" />
+          <span className="font-display font-bold text-foreground text-2xl block">4.6</span>
+          <span className="text-xs text-muted-foreground font-body">Avaliação média</span>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {[
+          { title: "Zonas de Entrega", desc: "Configurar zonas e taxas de delivery.", icon: MapPin },
+          { title: "Segurança", desc: "Logs de acesso e permissões.", icon: Shield },
+        ].map((card) => {
+          const Icon = card.icon;
+          return (
+            <div key={card.title} className="bg-card border border-border rounded-2xl p-5 hover:shadow-md transition-shadow cursor-pointer group">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="p-2 rounded-xl bg-purple-100"><Icon className="h-5 w-5 text-purple-600" /></div>
+                <h3 className="font-display font-bold text-foreground">{card.title}</h3>
+              </div>
+              <p className="text-sm text-muted-foreground font-body">{card.desc}</p>
+            </div>
+          );
+        })}
+      </div>
     </div>
-  </div>
   );
 };
 
@@ -143,7 +143,7 @@ const AdminStores = () => {
         <span className="text-sm text-muted-foreground font-body">{stores.length} lojas</span>
       </div>
       <div className="flex gap-2 overflow-x-auto">
-        {[["all","Todas"],["active","Activas"],["pending","Pendentes"],["suspended","Suspensas"]].map(([k,v]) => (
+        {[["all", "Todas"], ["active", "Activas"], ["pending", "Pendentes"], ["suspended", "Suspensas"]].map(([k, v]) => (
           <button key={k} onClick={() => setFilter(k)} className={`px-3 py-1.5 rounded-full text-xs font-body font-medium whitespace-nowrap transition-all ${filter === k ? "bg-purple-600 text-white" : "bg-muted text-muted-foreground"}`}>{v}</button>
         ))}
       </div>
@@ -192,7 +192,7 @@ const AdminOrders = () => {
     <div className="space-y-5">
       <h2 className="font-display text-2xl font-bold text-foreground">Todas as Encomendas</h2>
       <div className="flex gap-2 overflow-x-auto">
-        {[["all","Todas"],["active","Activas"],["delivered","Entregues"],["issues","Problemas"]].map(([k,v]) => (
+        {[["all", "Todas"], ["active", "Activas"], ["delivered", "Entregues"], ["issues", "Problemas"]].map(([k, v]) => (
           <button key={k} onClick={() => setFilter(k)} className={`px-3 py-1.5 rounded-full text-xs font-body font-medium whitespace-nowrap transition-all ${filter === k ? "bg-purple-600 text-white" : "bg-muted text-muted-foreground"}`}>{v}</button>
         ))}
       </div>
@@ -243,7 +243,7 @@ const AdminUsers = () => {
         <input type="text" placeholder="Pesquisar utilizadores..." className="w-full pl-11 pr-4 py-3 rounded-2xl bg-card border border-border text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500 font-body" />
       </div>
       <div className="flex gap-2">
-        {[["all","Todos"],["clients","Clientes"],["vendors","Vendedores"],["drivers","Motoristas"]].map(([k,v]) => (
+        {[["all", "Todos"], ["clients", "Clientes"], ["vendors", "Vendedores"], ["drivers", "Motoristas"]].map(([k, v]) => (
           <button key={k} onClick={() => setFilter(k)} className={`px-3 py-1.5 rounded-full text-xs font-body font-medium whitespace-nowrap transition-all ${filter === k ? "bg-purple-600 text-white" : "bg-muted text-muted-foreground"}`}>{v}</button>
         ))}
       </div>
@@ -275,7 +275,7 @@ const AdminSettings = () => (
       <h3 className="font-display font-bold text-foreground mb-4">Plataforma</h3>
       <div className="space-y-3">
         {[
-          { label: "Nome da plataforma", value: "asap" },
+          { label: "Nome da plataforma", value: "Mmm" },
           { label: "Moeda", value: "Kwanza (Kz)" },
           { label: "Taxa de serviço", value: "5%" },
           { label: "Taxa de entrega base", value: "500 Kz" },
