@@ -34,9 +34,16 @@ interface StoreData {
   is_active: boolean;
 }
 
+interface DashboardStats {
+  productsCount: number;
+  ordersCount: number;
+  revenue: number;
+}
+
 const VendorDashboard = () => {
   const [activeTab, setActiveTab] = useState("home");
   const [store, setStore] = useState<StoreData | null>(null);
+  const [stats, setStats] = useState<DashboardStats>({ productsCount: 0, ordersCount: 0, revenue: 0 });
   const [loading, setLoading] = useState(true);
   const [showSetup, setShowSetup] = useState(false);
   const [userId, setUserId] = useState<string>("");
@@ -54,6 +61,21 @@ const VendorDashboard = () => {
         .maybeSingle();
 
       setStore(data);
+
+      if (data) {
+        // Fetch stats
+        const [productsRes, ordersRes] = await Promise.all([
+          supabase.from("products").select("id", { count: "exact", head: true }).eq("store_id", data.id),
+          supabase.from("orders").select("id, total", { count: "exact" }).eq("store_id", data.id)
+        ]);
+
+        const productsCount = productsRes.count || 0;
+        const ordersCount = ordersRes.count || 0;
+        const revenue = ordersRes.data?.reduce((acc, order) => acc + (order.total || 0), 0) || 0;
+
+        setStats({ productsCount, ordersCount, revenue });
+      }
+
       setLoading(false);
     };
     fetchStore();
@@ -66,11 +88,23 @@ const VendorDashboard = () => {
       .eq("owner_id", userId)
       .maybeSingle();
     setStore(data);
+
+    if (data) {
+      const [productsRes, ordersRes] = await Promise.all([
+        supabase.from("products").select("id", { count: "exact", head: true }).eq("store_id", data.id),
+        supabase.from("orders").select("id, total", { count: "exact" }).eq("store_id", data.id)
+      ]);
+      setStats({
+        productsCount: productsRes.count || 0,
+        ordersCount: ordersRes.count || 0,
+        revenue: ordersRes.data?.reduce((acc, order) => acc + (order.total || 0), 0) || 0
+      });
+    }
   };
 
   if (loading) {
     return (
-      <DashboardShell title="Painel Vendedor" bottomNav={<BottomNav items={navItems} activeId="home" onNavigate={() => {}} />}>
+      <DashboardShell title="Painel Vendedor" bottomNav={<BottomNav items={navItems} activeId="home" onNavigate={() => { }} />}>
         <div className="flex items-center justify-center h-64">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
@@ -80,7 +114,7 @@ const VendorDashboard = () => {
 
   if (!store) {
     return (
-      <DashboardShell title="Painel Vendedor" bottomNav={<BottomNav items={navItems} activeId="home" onNavigate={() => {}} />}>
+      <DashboardShell title="Painel Vendedor" bottomNav={<BottomNav items={navItems} activeId="home" onNavigate={() => { }} />}>
         <div className="container mx-auto px-4 py-12 text-center space-y-4">
           <Store className="h-16 w-16 mx-auto text-muted-foreground/40" />
           <h2 className="font-display text-2xl font-bold text-foreground">Bem-vindo ao seu Painel</h2>
@@ -96,12 +130,12 @@ const VendorDashboard = () => {
 
   const renderContent = () => {
     switch (activeTab) {
-      case "home": return <VendorHome store={store} />;
-      case "products": return <VendorProducts storeId={store.id} />;
+      case "home": return <VendorHome store={store} stats={stats} />;
+      case "products": return <VendorProducts storeId={store.id} onUpdate={refreshStore} />;
       case "orders": return <VendorOrders />;
       case "reviews": return <VendorReviews />;
       case "settings": return <VendorSettings store={store} onUpdated={refreshStore} />;
-      default: return <VendorHome store={store} />;
+      default: return <VendorHome store={store} stats={stats} />;
     }
   };
 
@@ -119,54 +153,54 @@ const VendorDashboard = () => {
   );
 };
 
-const VendorHome = ({ store }: { store: StoreData }) => {
+const VendorHome = ({ store, stats }: { store: StoreData, stats: DashboardStats }) => {
   const { name } = useDisplayUser();
   return (
-  <div className="space-y-6">
-    <div className="relative rounded-2xl overflow-hidden h-44">
-      <img src={store.cover_url || heroVendor} alt="Loja" className="absolute inset-0 w-full h-full object-cover" />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/10" />
-      <div className="relative z-10 p-6 h-full flex flex-col justify-end text-white">
-        <p className="text-white/80 font-body text-sm">Painel do Vendedor</p>
-        <h1 className="font-display text-2xl font-bold mt-1 flex items-center gap-2">
-          {store.name} <Store className="h-6 w-6" />
-        </h1>
-        <div className="flex items-center gap-3 mt-1.5">
-          {store.address && (
-            <span className="bg-white/20 backdrop-blur-sm text-white text-xs font-body px-2.5 py-0.5 rounded-full flex items-center gap-1"><MapPin className="h-3 w-3" /> {store.address}</span>
-          )}
-          <span className="bg-amber-500/80 backdrop-blur-sm text-white text-xs font-body px-2.5 py-0.5 rounded-full flex items-center gap-1"><Star className="h-3 w-3 fill-white" /> {store.average_rating || 0}</span>
-          <span className={`backdrop-blur-sm text-white text-xs font-body px-2.5 py-0.5 rounded-full ${store.is_active ? "bg-emerald-500/80" : "bg-red-500/80"}`}>{store.is_active ? "Aberta" : "Fechada"}</span>
+    <div className="space-y-6">
+      <div className="relative rounded-2xl overflow-hidden h-44">
+        <img src={store.cover_url || heroVendor} alt="Loja" className="absolute inset-0 w-full h-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/10" />
+        <div className="relative z-10 p-6 h-full flex flex-col justify-end text-white">
+          <p className="text-white/80 font-body text-sm">Painel do Vendedor</p>
+          <h1 className="font-display text-2xl font-bold mt-1 flex items-center gap-2">
+            {store.name} <Store className="h-6 w-6" />
+          </h1>
+          <div className="flex items-center gap-3 mt-1.5">
+            {store.address && (
+              <span className="bg-white/20 backdrop-blur-sm text-white text-xs font-body px-2.5 py-0.5 rounded-full flex items-center gap-1"><MapPin className="h-3 w-3" /> {store.address}</span>
+            )}
+            <span className="bg-amber-500/80 backdrop-blur-sm text-white text-xs font-body px-2.5 py-0.5 rounded-full flex items-center gap-1"><Star className="h-3 w-3 fill-white" /> {store.average_rating || 0}</span>
+            <span className={`backdrop-blur-sm text-white text-xs font-body px-2.5 py-0.5 rounded-full ${store.is_active ? "bg-emerald-500/80" : "bg-red-500/80"}`}>{store.is_active ? "Aberta" : "Fechada"}</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        <StatCard label="Produtos" value={String(stats.productsCount)} icon={Package} />
+        <StatCard label="Encomendas" value={String(stats.ordersCount)} icon={ShoppingCart} />
+        <StatCard label="Avaliação" value={String(store.average_rating || 0)} icon={Star} />
+        <StatCard label="Receita" value={`${stats.revenue.toLocaleString("pt-AO")} Kz`} icon={TrendingUp} />
+      </div>
+
+      <div className="bg-card border border-border rounded-2xl p-5">
+        <h2 className="font-display text-lg font-bold text-foreground mb-4">Ações Rápidas</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <Button className="bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:opacity-90 rounded-xl h-12 gap-2 font-body shadow-sm">
+            <Plus className="h-4 w-4" /> Adicionar Produto
+          </Button>
+          <Button variant="outline" className="rounded-xl h-12 gap-2 font-body">
+            <ShoppingCart className="h-4 w-4" /> Ver Encomendas
+          </Button>
+          <Button variant="outline" className="rounded-xl h-12 gap-2 font-body">
+            <BarChart3 className="h-4 w-4" /> Relatório
+          </Button>
         </div>
       </div>
     </div>
-
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-      <StatCard label="Produtos" value="--" icon={Package} />
-      <StatCard label="Encomendas" value="--" icon={ShoppingCart} />
-      <StatCard label="Avaliação" value={String(store.average_rating || 0)} icon={Star} />
-      <StatCard label="Receita" value="--" icon={TrendingUp} />
-    </div>
-
-    <div className="bg-card border border-border rounded-2xl p-5">
-      <h2 className="font-display text-lg font-bold text-foreground mb-4">Ações Rápidas</h2>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <Button className="bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:opacity-90 rounded-xl h-12 gap-2 font-body shadow-sm">
-          <Plus className="h-4 w-4" /> Adicionar Produto
-        </Button>
-        <Button variant="outline" className="rounded-xl h-12 gap-2 font-body">
-          <ShoppingCart className="h-4 w-4" /> Ver Encomendas
-        </Button>
-        <Button variant="outline" className="rounded-xl h-12 gap-2 font-body">
-          <BarChart3 className="h-4 w-4" /> Relatório
-        </Button>
-      </div>
-    </div>
-  </div>
   );
 };
 
-const VendorProducts = ({ storeId }: { storeId: string }) => {
+const VendorProducts = ({ storeId, onUpdate }: { storeId: string, onUpdate?: () => void }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -224,6 +258,7 @@ const VendorProducts = ({ storeId }: { storeId: string }) => {
         return;
       }
       fetchProducts();
+      if (onUpdate) onUpdate();
     }
   };
 
@@ -317,7 +352,7 @@ const VendorOrders = () => {
     <div className="space-y-5">
       <h2 className="font-display text-2xl font-bold text-foreground">Encomendas</h2>
       <div className="flex gap-2">
-        {[["all","Todas"],["new","Novas"],["preparing","Preparando"],["done","Concluídas"]].map(([k,v]) => (
+        {[["all", "Todas"], ["new", "Novas"], ["preparing", "Preparando"], ["done", "Concluídas"]].map(([k, v]) => (
           <button key={k} onClick={() => setFilter(k)} className={`px-3 py-1.5 rounded-full text-xs font-body font-medium transition-all ${filter === k ? "bg-accent text-accent-foreground" : "bg-muted text-muted-foreground"}`}>{v}</button>
         ))}
       </div>
@@ -366,7 +401,7 @@ const VendorReviews = () => {
         </div>
       </div>
       <div className="grid grid-cols-3 gap-3">
-        {[{label: "Total", value: "47"}, {label: "Este mês", value: "12"}, {label: "Positivas", value: "92%"}].map((s) => (
+        {[{ label: "Total", value: "47" }, { label: "Este mês", value: "12" }, { label: "Positivas", value: "92%" }].map((s) => (
           <div key={s.label} className="bg-card border border-border rounded-2xl p-3 text-center">
             <span className="font-display font-bold text-foreground text-xl block">{s.value}</span>
             <span className="text-[10px] text-muted-foreground font-body">{s.label}</span>
@@ -402,75 +437,75 @@ const VendorReviews = () => {
 const VendorSettings = ({ store, onUpdated }: { store: StoreData; onUpdated: () => void }) => {
   const { email } = useDisplayUser();
   return (
-  <div className="space-y-5">
-    <h2 className="font-display text-2xl font-bold text-foreground">Definições da Loja</h2>
-    
-    {store.cover_url && (
-      <div className="rounded-2xl overflow-hidden h-32 border border-border">
-        <img src={store.cover_url} alt="Capa" className="w-full h-full object-cover" />
-      </div>
-    )}
-    
-    <div className="bg-card border border-border rounded-2xl p-5">
-      <h3 className="font-display font-bold text-foreground mb-4">Informações Gerais</h3>
-      <div className="space-y-4">
-        {[
-          { label: "Nome da Loja", value: store.name, icon: Store },
-          { label: "Endereço", value: store.address || "Não definido", icon: MapPin },
-          { label: "Telefone", value: store.phone || "Não definido", icon: Phone },
-          { label: "Email", value: email || "—", icon: Mail },
-        ].map((field) => {
-          const Icon = field.icon;
-          return (
-            <div key={field.label} className="flex items-center gap-3 p-3 bg-muted/50 rounded-xl">
-              <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
-              <div className="flex-1">
-                <span className="text-[10px] text-muted-foreground font-body block">{field.label}</span>
-                <span className="text-sm font-body text-foreground">{field.value}</span>
+    <div className="space-y-5">
+      <h2 className="font-display text-2xl font-bold text-foreground">Definições da Loja</h2>
+
+      {store.cover_url && (
+        <div className="rounded-2xl overflow-hidden h-32 border border-border">
+          <img src={store.cover_url} alt="Capa" className="w-full h-full object-cover" />
+        </div>
+      )}
+
+      <div className="bg-card border border-border rounded-2xl p-5">
+        <h3 className="font-display font-bold text-foreground mb-4">Informações Gerais</h3>
+        <div className="space-y-4">
+          {[
+            { label: "Nome da Loja", value: store.name, icon: Store },
+            { label: "Endereço", value: store.address || "Não definido", icon: MapPin },
+            { label: "Telefone", value: store.phone || "Não definido", icon: Phone },
+            { label: "Email", value: email || "—", icon: Mail },
+          ].map((field) => {
+            const Icon = field.icon;
+            return (
+              <div key={field.label} className="flex items-center gap-3 p-3 bg-muted/50 rounded-xl">
+                <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
+                <div className="flex-1">
+                  <span className="text-[10px] text-muted-foreground font-body block">{field.label}</span>
+                  <span className="text-sm font-body text-foreground">{field.value}</span>
+                </div>
+                <Edit className="h-3.5 w-3.5 text-muted-foreground cursor-pointer" />
               </div>
-              <Edit className="h-3.5 w-3.5 text-muted-foreground cursor-pointer" />
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
-    </div>
-    <div className="bg-card border border-border rounded-2xl p-5">
-      <h3 className="font-display font-bold text-foreground mb-4">Horário de Funcionamento</h3>
-      <div className="space-y-2">
+      <div className="bg-card border border-border rounded-2xl p-5">
+        <h3 className="font-display font-bold text-foreground mb-4">Horário de Funcionamento</h3>
+        <div className="space-y-2">
+          {[
+            { day: "Segunda - Sexta", hours: "08:00 - 22:00" },
+            { day: "Sábado", hours: "09:00 - 23:00" },
+            { day: "Domingo", hours: "10:00 - 20:00" },
+          ].map((h) => (
+            <div key={h.day} className="flex items-center justify-between p-3 bg-muted/50 rounded-xl">
+              <span className="text-sm font-body text-foreground">{h.day}</span>
+              <span className="text-sm font-body font-semibold text-foreground">{h.hours}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="bg-card border border-border rounded-2xl overflow-hidden divide-y divide-border">
         {[
-          { day: "Segunda - Sexta", hours: "08:00 - 22:00" },
-          { day: "Sábado", hours: "09:00 - 23:00" },
-          { day: "Domingo", hours: "10:00 - 20:00" },
-        ].map((h) => (
-          <div key={h.day} className="flex items-center justify-between p-3 bg-muted/50 rounded-xl">
-            <span className="text-sm font-body text-foreground">{h.day}</span>
-            <span className="text-sm font-body font-semibold text-foreground">{h.hours}</span>
+          { label: "Receber notificações", desc: "Alertas de novas encomendas", active: true },
+          { label: "Loja visível", desc: "Aparecer nos resultados de pesquisa", active: store.is_active },
+          { label: "Aceitar encomendas", desc: "Permitir novos pedidos", active: true },
+        ].map((toggle) => (
+          <div key={toggle.label} className="flex items-center justify-between p-4">
+            <div>
+              <span className="font-body font-semibold text-foreground text-sm block">{toggle.label}</span>
+              <span className="text-xs text-muted-foreground font-body">{toggle.desc}</span>
+            </div>
+            <div className={`w-10 h-6 rounded-full relative cursor-pointer transition-colors ${toggle.active ? "bg-emerald-500" : "bg-muted"}`}>
+              <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${toggle.active ? "right-1" : "left-1"}`} />
+            </div>
           </div>
         ))}
       </div>
+      <Button className="w-full rounded-xl h-12 gap-2 font-body bg-gradient-to-r from-amber-500 to-orange-500 text-white">
+        <Save className="h-4 w-4" /> Guardar Alterações
+      </Button>
+      <VendorLogoutButton />
     </div>
-    <div className="bg-card border border-border rounded-2xl overflow-hidden divide-y divide-border">
-      {[
-        { label: "Receber notificações", desc: "Alertas de novas encomendas", active: true },
-        { label: "Loja visível", desc: "Aparecer nos resultados de pesquisa", active: store.is_active },
-        { label: "Aceitar encomendas", desc: "Permitir novos pedidos", active: true },
-      ].map((toggle) => (
-        <div key={toggle.label} className="flex items-center justify-between p-4">
-          <div>
-            <span className="font-body font-semibold text-foreground text-sm block">{toggle.label}</span>
-            <span className="text-xs text-muted-foreground font-body">{toggle.desc}</span>
-          </div>
-          <div className={`w-10 h-6 rounded-full relative cursor-pointer transition-colors ${toggle.active ? "bg-emerald-500" : "bg-muted"}`}>
-            <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${toggle.active ? "right-1" : "left-1"}`} />
-          </div>
-        </div>
-      ))}
-    </div>
-    <Button className="w-full rounded-xl h-12 gap-2 font-body bg-gradient-to-r from-amber-500 to-orange-500 text-white">
-      <Save className="h-4 w-4" /> Guardar Alterações
-    </Button>
-    <VendorLogoutButton />
-  </div>
   );
 };
 
