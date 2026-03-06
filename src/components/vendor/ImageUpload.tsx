@@ -57,7 +57,7 @@ const ImageUpload = ({ bucket, folder, currentUrl, onUploaded, className = "", a
     <div className={`relative ${className}`}>
       <input ref={inputRef} type="file" accept="image/*" onChange={handleUpload} className="hidden" />
       {preview ? (
-        <div className={`relative rounded-xl overflow-hidden border border-border ${aspectRatio === "wide" ? "h-36" : "h-28 w-28"}`}>
+        <div className={`relative rounded-xl overflow-hidden border border-border ${aspectRatio === "wide" ? "h-48" : "h-28 w-28"}`}>
           <img src={preview} alt="Preview" className="w-full h-full object-cover" />
           <button
             type="button"
@@ -72,7 +72,7 @@ const ImageUpload = ({ bucket, folder, currentUrl, onUploaded, className = "", a
           type="button"
           onClick={() => inputRef.current?.click()}
           disabled={uploading}
-          className={`border-2 border-dashed border-muted-foreground/30 rounded-xl flex flex-col items-center justify-center gap-1.5 hover:border-accent transition-colors bg-muted/30 ${aspectRatio === "wide" ? "h-36 w-full" : "h-28 w-28"}`}
+          className={`border-2 border-dashed border-muted-foreground/30 rounded-xl flex flex-col items-center justify-center gap-1.5 hover:border-accent transition-colors bg-muted/30 ${aspectRatio === "wide" ? "h-48 w-full" : "h-28 w-28"}`}
         >
           {uploading ? (
             <Loader2 className="h-5 w-5 text-muted-foreground animate-spin" />
