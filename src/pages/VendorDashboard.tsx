@@ -47,6 +47,7 @@ const VendorDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [showSetup, setShowSetup] = useState(false);
   const [userId, setUserId] = useState<string>("");
+  const [isAddProductOpen, setIsAddProductOpen] = useState(false);
 
   useEffect(() => {
     const fetchStore = async () => {
@@ -130,12 +131,12 @@ const VendorDashboard = () => {
 
   const renderContent = () => {
     switch (activeTab) {
-      case "home": return <VendorHome store={store} stats={stats} />;
-      case "products": return <VendorProducts storeId={store.id} onUpdate={refreshStore} />;
+      case "home": return <VendorHome store={store} stats={stats} onNavigate={setActiveTab} onAddProduct={() => { setActiveTab("products"); setIsAddProductOpen(true); }} />;
+      case "products": return <VendorProducts storeId={store.id} onUpdate={refreshStore} isAddProductOpen={isAddProductOpen} setIsAddProductOpen={setIsAddProductOpen} />;
       case "orders": return <VendorOrders />;
       case "reviews": return <VendorReviews />;
       case "settings": return <VendorSettings store={store} onUpdated={refreshStore} />;
-      default: return <VendorHome store={store} stats={stats} />;
+      default: return <VendorHome store={store} stats={stats} onNavigate={setActiveTab} onAddProduct={() => { setActiveTab("products"); setIsAddProductOpen(true); }} />;
     }
   };
 
@@ -153,7 +154,7 @@ const VendorDashboard = () => {
   );
 };
 
-const VendorHome = ({ store, stats }: { store: StoreData, stats: DashboardStats }) => {
+const VendorHome = ({ store, stats, onNavigate, onAddProduct }: { store: StoreData, stats: DashboardStats, onNavigate: (id: string) => void, onAddProduct: () => void }) => {
   const { name } = useDisplayUser();
   return (
     <div className="space-y-6">
@@ -185,13 +186,13 @@ const VendorHome = ({ store, stats }: { store: StoreData, stats: DashboardStats 
       <div className="bg-card border border-border rounded-2xl p-5">
         <h2 className="font-display text-lg font-bold text-foreground mb-4">Ações Rápidas</h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <Button className="bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:opacity-90 rounded-xl h-12 gap-2 font-body shadow-sm">
+          <Button onClick={onAddProduct} className="bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:opacity-90 rounded-xl h-12 gap-2 font-body shadow-sm">
             <Plus className="h-4 w-4" /> Adicionar Produto
           </Button>
-          <Button variant="outline" className="rounded-xl h-12 gap-2 font-body">
+          <Button variant="outline" onClick={() => onNavigate("orders")} className="rounded-xl h-12 gap-2 font-body">
             <ShoppingCart className="h-4 w-4" /> Ver Encomendas
           </Button>
-          <Button variant="outline" className="rounded-xl h-12 gap-2 font-body">
+          <Button variant="outline" onClick={() => toast.info("Funcionalidade em desenvolvimento")} className="rounded-xl h-12 gap-2 font-body">
             <BarChart3 className="h-4 w-4" /> Relatório
           </Button>
         </div>
@@ -200,7 +201,7 @@ const VendorHome = ({ store, stats }: { store: StoreData, stats: DashboardStats 
   );
 };
 
-const VendorProducts = ({ storeId, onUpdate }: { storeId: string, onUpdate?: () => void }) => {
+const VendorProducts = ({ storeId, onUpdate, isAddProductOpen, setIsAddProductOpen }: { storeId: string, onUpdate?: () => void, isAddProductOpen: boolean, setIsAddProductOpen: (open: boolean) => void }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -210,6 +211,14 @@ const VendorProducts = ({ storeId, onUpdate }: { storeId: string, onUpdate?: () 
   useEffect(() => {
     fetchProducts();
   }, [storeId]);
+
+  useEffect(() => {
+    if (isAddProductOpen) {
+      setEditIndex(null);
+      setDialogOpen(true);
+      setIsAddProductOpen(false);
+    }
+  }, [isAddProductOpen]);
 
   const fetchProducts = async () => {
     const { data, error } = await supabase
