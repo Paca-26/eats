@@ -30,7 +30,10 @@ const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [acceptTerms, setAcceptTerms] = useState(false);
   const [role, setRole] = useState("client");
   const [showPassword, setShowPassword] = useState(false);
   const [showDemo, setShowDemo] = useState(false);
@@ -62,19 +65,42 @@ const Auth = () => {
         };
         navigate(roleRoute[roleData?.role ?? "client"] ?? "/cliente");
       } else {
-        const { error } = await supabase.auth.signUp({
+        if (password !== confirmPassword) {
+          throw new Error("As senhas não coincidem");
+        }
+        if (!acceptTerms) {
+          throw new Error("Você deve aceitar os termos e condições");
+        }
+
+        const { data: signUpData, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            data: { full_name: name, role },
+            data: {
+              full_name: name,
+              phone: phone,
+              role: role
+            },
             emailRedirectTo: window.location.origin,
           },
         });
         if (error) throw error;
+
         toast({
           title: "Conta criada!",
-          description: "Verifique o seu email para confirmar o registo.",
+          description: "Bem-vindo ao Mmm! Pode agora configurar a sua conta.",
         });
+
+        // Auto-login logic: if signUp was successful, navigate to the dashboard
+        if (signUpData.user) {
+          const roleRoute: Record<string, string> = {
+            client: "/cliente",
+            store: "/vendedor",
+            logistics: "/logistica",
+            admin: "/admin",
+          };
+          navigate(roleRoute[role] ?? "/cliente");
+        }
       }
     } catch (error: any) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
@@ -153,6 +179,29 @@ const Auth = () => {
             )}
             {!isLogin && (
               <motion.div
+                key="phone"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2 }}
+                className="mt-3"
+              >
+                <label className="text-sm font-body font-medium text-foreground mb-1.5 block">Número de telefone</label>
+                <div className="relative">
+                  <Truck className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground rotate-0" />
+                  <Input
+                    type="tel"
+                    placeholder="9XX XXX XXX"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="pl-10 rounded-xl h-11 bg-background"
+                    required={!isLogin}
+                  />
+                </div>
+              </motion.div>
+            )}
+            {!isLogin && (
+              <motion.div
                 key="role"
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
@@ -171,8 +220,8 @@ const Auth = () => {
                         type="button"
                         onClick={() => setRole(opt.value)}
                         className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all duration-200 ${selected
-                            ? "border-accent bg-accent/10 shadow-sm"
-                            : "border-border bg-background hover:border-accent/30"
+                          ? "border-accent bg-accent/10 shadow-sm"
+                          : "border-border bg-background hover:border-accent/30"
                           }`}
                       >
                         <Icon className={`h-5 w-5 ${selected ? "text-accent" : "text-muted-foreground"}`} />
@@ -222,6 +271,44 @@ const Auth = () => {
               </button>
             </div>
           </div>
+
+          {!isLogin && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              className="space-y-4"
+            >
+              <div>
+                <label className="text-sm font-body font-medium text-foreground mb-1.5 block">Confirmar Senha</label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="pl-10 rounded-xl h-11 bg-background"
+                    required={!isLogin}
+                    minLength={6}
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3 pt-1">
+                <input
+                  type="checkbox"
+                  id="terms"
+                  checked={acceptTerms}
+                  onChange={(e) => setAcceptTerms(e.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-gray-300 text-accent focus:ring-accent"
+                  required={!isLogin}
+                />
+                <label htmlFor="terms" className="text-xs font-body text-muted-foreground leading-normal">
+                  Ao criar conta, aceito os <button type="button" className="text-accent hover:underline">termos e condições</button> e a <button type="button" className="text-accent hover:underline">política de privacidade</button>.
+                </label>
+              </div>
+            </motion.div>
+          )}
 
           {isLogin && (
             <div className="text-right">

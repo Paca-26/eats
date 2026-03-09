@@ -120,11 +120,12 @@ const VendorDashboard = () => {
       <DashboardShell title="Painel Vendedor" bottomNav={<BottomNav items={navItems} activeId="home" onNavigate={() => { }} />}>
         <div className="container mx-auto px-4 py-12 text-center space-y-4">
           <Store className="h-16 w-16 mx-auto text-muted-foreground/40" />
-          <h2 className="font-display text-2xl font-bold text-foreground">Bem-vindo ao seu Painel</h2>
-          <p className="text-muted-foreground font-body">Crie a sua loja para começar a vender.</p>
-          <Button onClick={() => setShowSetup(true)} className="rounded-xl h-12 gap-2 font-body bg-gradient-to-r from-amber-500 to-orange-500 text-white">
-            <Plus className="h-5 w-5" /> Criar Loja
+          <h2 className="font-display text-2xl font-bold text-foreground">Conta Criada com Sucesso!</h2>
+          <p className="text-muted-foreground font-body max-w-sm mx-auto">Para começar a vender os seus produtos, precisa primeiro configurar a sua loja.</p>
+          <Button onClick={() => setShowSetup(true)} className="rounded-xl h-12 gap-2 font-body bg-gradient-to-r from-amber-500 to-orange-500 text-white px-8">
+            <Store className="h-5 w-5" /> Configurar minha Loja
           </Button>
+          <p className="text-xs text-muted-foreground font-body pt-4">Pode completar esta etapa agora ou mais tarde.</p>
           <StoreSetupDialog open={showSetup} onOpenChange={setShowSetup} onCreated={refreshStore} userId={userId} />
         </div>
       </DashboardShell>

@@ -17,6 +17,8 @@ interface StoreSetupDialogProps {
 const StoreSetupDialog = ({ open, onOpenChange, onCreated, userId }: StoreSetupDialogProps) => {
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
+  const [country, setCountry] = useState("Angola");
+  const [city, setCity] = useState("");
   const [phone, setPhone] = useState("");
   const [description, setDescription] = useState("");
   const [logoUrl, setLogoUrl] = useState("");
@@ -43,9 +45,11 @@ const StoreSetupDialog = ({ open, onOpenChange, onCreated, userId }: StoreSetupD
     if (!selectedCategoryId) { toast.error("Selecione uma categoria para a sua loja"); return; }
 
     setSaving(true);
+    const fullAddress = `${address}${city ? `, ${city}` : ""}${country ? `, ${country}` : ""}`;
+
     const { error } = await supabase.from("stores").insert({
       name: name.trim(),
-      address: address.trim(),
+      address: fullAddress.trim(),
       phone: phone.trim() || null,
       description: description.trim() || null,
       logo_url: logoUrl || null,
@@ -98,8 +102,8 @@ const StoreSetupDialog = ({ open, onOpenChange, onCreated, userId }: StoreSetupD
                   type="button"
                   onClick={() => setSelectedCategoryId(cat.id)}
                   className={`px-3 py-1.5 rounded-full text-xs font-body font-medium transition-all ${selectedCategoryId === cat.id
-                      ? "bg-accent text-accent-foreground border-accent"
-                      : "bg-muted text-muted-foreground hover:bg-muted/80 border-transparent"
+                    ? "bg-accent text-accent-foreground border-accent"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80 border-transparent"
                     } border`}
                 >
                   {cat.name}
@@ -111,11 +115,22 @@ const StoreSetupDialog = ({ open, onOpenChange, onCreated, userId }: StoreSetupD
             </div>
           </div>
 
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-body font-medium text-muted-foreground block mb-1.5">País *</label>
+              <Input value={country} onChange={(e) => setCountry(e.target.value)} placeholder="Angola" className="rounded-xl font-body" />
+            </div>
+            <div>
+              <label className="text-xs font-body font-medium text-muted-foreground block mb-1.5">Cidade *</label>
+              <Input value={city} onChange={(e) => setCity(e.target.value)} placeholder="Luanda" className="rounded-xl font-body" />
+            </div>
+          </div>
+
           <div>
-            <label className="text-xs font-body font-medium text-muted-foreground block mb-1.5">Localização *</label>
+            <label className="text-xs font-body font-medium text-muted-foreground block mb-1.5">Endereço *</label>
             <div className="relative">
               <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Ex: Rua Principal, Maianga, Luanda" className="rounded-xl font-body pl-9" maxLength={200} />
+              <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Ex: Rua Principal, Maianga" className="rounded-xl font-body pl-9" maxLength={200} />
             </div>
           </div>
 
