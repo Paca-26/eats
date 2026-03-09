@@ -162,20 +162,36 @@ const VendorHome = ({ store, stats, onNavigate, onAddProduct }: { store: StoreDa
   const { name } = useDisplayUser();
   return (
     <div className="space-y-6">
-      <div className="relative rounded-2xl overflow-hidden h-64 shadow-lg border border-border/50">
+      <div className="relative rounded-2xl overflow-hidden h-72 shadow-lg border border-border/50 bg-muted">
         <img src={store.cover_url || heroVendor} alt="Loja" className="absolute inset-0 w-full h-full object-cover object-center" />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+
         <div className="relative z-10 p-6 h-full flex flex-col justify-end text-white">
-          <p className="text-white/90 font-body text-sm font-medium">Painel do Vendedor</p>
-          <h1 className="font-display text-3xl font-bold mt-1.5 flex items-center gap-2 drop-shadow-md">
-            {store.name} <Store className="h-7 w-7 text-amber-400" />
-          </h1>
-          <div className="flex items-center gap-3 mt-3">
+          <div className="flex flex-col sm:flex-row items-end sm:items-center gap-4 mb-2">
+            <div className="w-20 h-20 rounded-2xl border-4 border-white/20 bg-background/10 backdrop-blur-md overflow-hidden shrink-0 shadow-xl group hover:scale-105 transition-transform duration-300">
+              {store.logo_url ? (
+                <img src={store.logo_url} alt={store.name} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-amber-400 to-orange-500">
+                  <span className="text-2xl font-display font-bold text-white leading-none">{store.name[0]}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex-1 text-right sm:text-left">
+              <p className="text-white/80 font-body text-xs font-medium uppercase tracking-wider">Painel do Vendedor</p>
+              <h1 className="font-display text-3xl font-bold mt-0.5 flex items-center justify-end sm:justify-start gap-2 drop-shadow-md">
+                {store.name} <Store className="h-6 w-6 text-amber-400" />
+              </h1>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-end sm:justify-start gap-2 mt-2">
             {store.address && (
-              <span className="bg-black/30 backdrop-blur-md text-white text-xs font-body px-3 py-1 rounded-full flex items-center gap-1.5 border border-white/10"><MapPin className="h-3.5 w-3.5" /> {store.address}</span>
+              <span className="bg-black/40 backdrop-blur-md text-white text-[10px] font-body px-2.5 py-1 rounded-full flex items-center gap-1.5 border border-white/10 shadow-sm"><MapPin className="h-3 w-3" /> {store.address}</span>
             )}
-            <span className="bg-amber-500/90 backdrop-blur-md text-white text-xs font-body px-3 py-1 rounded-full flex items-center gap-1.5 border border-white/10"><Star className="h-3.5 w-3.5 fill-white" /> {store.average_rating || 0}</span>
-            <span className={`backdrop-blur-md text-white text-xs font-body px-3 py-1 rounded-full border border-white/10 ${store.is_active ? "bg-emerald-500/90" : "bg-red-500/90"}`}>{store.is_active ? "Aberta" : "Fechada"}</span>
+            <span className="bg-amber-500/90 backdrop-blur-md text-white text-[10px] font-body px-2.5 py-1 rounded-full flex items-center gap-1.5 border border-white/10 shadow-sm"><Star className="h-3 w-3 fill-white" /> {store.average_rating || 0}</span>
+            <span className={`backdrop-blur-md text-white text-[10px] font-body px-2.5 py-1 rounded-full border border-white/10 shadow-sm ${store.is_active ? "bg-emerald-500/90" : "bg-red-500/90"}`}>{store.is_active ? "Aberta" : "Fechada"}</span>
           </div>
         </div>
       </div>
