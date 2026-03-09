@@ -133,7 +133,7 @@ const VendorDashboard = () => {
 
   if (loading) {
     return (
-      <DashboardShell title="Painel Vendedor" bottomNav={<BottomNav items={navItems} activeId="home" onNavigate={() => { }} />}>
+      <DashboardShell title="Painel Vendedor" bottomNav={<BottomNav items={initialNavItems} activeId="home" onNavigate={() => { }} />}>
         <div className="flex items-center justify-center h-64">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
@@ -143,7 +143,7 @@ const VendorDashboard = () => {
 
   if (!store) {
     return (
-      <DashboardShell title="Painel Vendedor" bottomNav={<BottomNav items={navItems} activeId="home" onNavigate={() => { }} />}>
+      <DashboardShell title="Painel Vendedor" bottomNav={<BottomNav items={initialNavItems} activeId="home" onNavigate={() => { }} />}>
         <div className="container mx-auto px-4 py-12 text-center space-y-4">
           <Store className="h-16 w-16 mx-auto text-muted-foreground/40" />
           <h2 className="font-display text-2xl font-bold text-foreground">Conta Criada com Sucesso!</h2>
@@ -227,7 +227,7 @@ const VendorHome = ({ store, stats, unreadCount, onNavigate, onAddProduct }: { s
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard label="Produtos" value={String(stats.productsCount)} icon={Package} />
-        <StatCard label="Encomendas" value={String(stats.ordersCount)} icon={ShoppingCart} badge={unreadCount > 0 ? `${unreadCount} novas` : undefined} />
+        <StatCard label="Encomendas" value={String(stats.ordersCount)} icon={ShoppingCart} />
         <StatCard label="Avaliação" value={String(store.average_rating || 0)} icon={Star} />
         <StatCard label="Receita" value={`${stats.revenue.toLocaleString("pt-AO")} Kz`} icon={TrendingUp} />
       </div>
