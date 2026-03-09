@@ -196,7 +196,6 @@ const ClientHome = ({ profile }: { profile: any }) => {
 
       {/* Points card removed as per user request */}
     </div>
-    </div >
   );
 };
 
