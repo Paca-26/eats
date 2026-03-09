@@ -249,9 +249,36 @@ const VendorProducts = ({ storeId, onUpdate, isAddProductOpen, setIsAddProductOp
     const priceNum = Number(product.price.replace(/[^\d]/g, ""));
 
     if (editIndex !== null) {
-      // For now, just update locally
-      setProducts((prev) => prev.map((p, i) => (i === editIndex ? product : p)));
+      const productToUpdate = products[editIndex];
+      // Find the ID of the product being edited
+      const { data: existingProducts } = await supabase
+        .from("products")
+        .select("id")
+        .eq("store_id", storeId)
+        .eq("name", productToUpdate.name)
+        .maybeSingle();
+
+      if (existingProducts?.id) {
+        const { error } = await supabase
+          .from("products")
+          .update({
+            name: product.name,
+            price: priceNum,
+            stock_quantity: product.stock,
+            is_available: product.active,
+            description: product.description || null,
+            image_url: product.image_url || null,
+          })
+          .eq("id", existingProducts.id);
+
+        if (error) {
+          toast.error("Erro ao atualizar produto");
+          return;
+        }
+        toast.success("Produto atualizado");
+      }
       setEditIndex(null);
+      fetchProducts();
     } else {
       const { error } = await supabase.from("products").insert({
         name: product.name,
@@ -267,20 +294,62 @@ const VendorProducts = ({ storeId, onUpdate, isAddProductOpen, setIsAddProductOp
         toast.error("Erro ao adicionar produto");
         return;
       }
+      toast.success("Produto adicionado");
       fetchProducts();
       if (onUpdate) onUpdate();
     }
   };
 
-  const handleDelete = (index: number) => {
+  const handleDelete = async (index: number) => {
     const realIndex = products.indexOf(filtered[index]);
-    setProducts((prev) => prev.filter((_, i) => i !== realIndex));
-    toast.success("Produto removido");
+    const productToDelete = products[realIndex];
+
+    const { data: existingProducts } = await supabase
+      .from("products")
+      .select("id")
+      .eq("store_id", storeId)
+      .eq("name", productToDelete.name)
+      .maybeSingle();
+
+    if (existingProducts?.id) {
+      const { error } = await supabase
+        .from("products")
+        .delete()
+        .eq("id", existingProducts.id);
+
+      if (error) {
+        toast.error("Erro ao remover produto");
+        return;
+      }
+      toast.success("Produto removido");
+      fetchProducts();
+      if (onUpdate) onUpdate();
+    }
   };
 
-  const handleToggleActive = (index: number) => {
+  const handleToggleActive = async (index: number) => {
     const realIndex = products.indexOf(filtered[index]);
-    setProducts((prev) => prev.map((p, i) => (i === realIndex ? { ...p, active: !p.active } : p)));
+    const productToToggle = products[realIndex];
+
+    const { data: existingProducts } = await supabase
+      .from("products")
+      .select("id")
+      .eq("store_id", storeId)
+      .eq("name", productToToggle.name)
+      .maybeSingle();
+
+    if (existingProducts?.id) {
+      const { error } = await supabase
+        .from("products")
+        .update({ is_available: !productToToggle.active })
+        .eq("id", existingProducts.id);
+
+      if (error) {
+        toast.error("Erro ao atualizar estado");
+        return;
+      }
+      fetchProducts();
+    }
   };
 
   const handleEdit = (index: number) => {

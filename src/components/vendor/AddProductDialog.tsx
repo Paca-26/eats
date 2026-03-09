@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +34,22 @@ const AddProductDialog = ({ open, onOpenChange, onAdd, editProduct, storeId }: A
   const [description, setDescription] = useState(editProduct?.description || "");
   const [imageUrl, setImageUrl] = useState(editProduct?.image_url || "");
 
+  // Update form fields when editProduct changes or dialog opens
+  useEffect(() => {
+    if (open) {
+      if (editProduct) {
+        setName(editProduct.name || "");
+        setPrice(editProduct.price?.replace(/[^\d]/g, "") || "");
+        setCategory(editProduct.category || "Pratos");
+        setStock(editProduct.stock?.toString() || "0");
+        setDescription(editProduct.description || "");
+        setImageUrl(editProduct.image_url || "");
+      } else {
+        resetForm();
+      }
+    }
+  }, [editProduct, open]);
+
   const resetForm = () => {
     setName("");
     setPrice("");
@@ -45,7 +61,7 @@ const AddProductDialog = ({ open, onOpenChange, onAdd, editProduct, storeId }: A
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!name.trim()) {
       toast.error("Insira o nome do produto");
       return;
@@ -127,11 +143,10 @@ const AddProductDialog = ({ open, onOpenChange, onAdd, editProduct, storeId }: A
                   key={cat}
                   type="button"
                   onClick={() => setCategory(cat)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-body font-medium transition-all ${
-                    category === cat
-                      ? "bg-accent text-accent-foreground"
-                      : "bg-muted text-muted-foreground hover:bg-muted/80"
-                  }`}
+                  className={`px-3 py-1.5 rounded-full text-xs font-body font-medium transition-all ${category === cat
+                    ? "bg-accent text-accent-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                    }`}
                 >
                   {cat}
                 </button>
