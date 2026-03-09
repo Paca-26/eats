@@ -4,7 +4,7 @@ import DashboardShell from "@/components/DashboardShell";
 import BottomNav, { BottomNavItem } from "@/components/BottomNav";
 import StatCard from "@/components/StatCard";
 import AnimatedTabContent from "@/components/AnimatedTabContent";
-import { Package, ShoppingCart, Star, TrendingUp, Plus, BarChart3, Settings, MessageSquare, Grid3X3, Store, Eye, Clock, Edit, Trash2, MapPin, Phone, Mail, Save, LogOut, ToggleLeft, ToggleRight, Loader2, UserPlus, Search } from "lucide-react";
+import { Package, ShoppingCart, Star, TrendingUp, Plus, BarChart3, Settings, MessageSquare, Grid3X3, Store, Eye, Clock, Edit, Trash2, MapPin, Phone, Mail, Save, LogOut, ToggleLeft, ToggleRight, Loader2, UserPlus, Search, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import AddProductDialog, { type Product } from "@/components/vendor/AddProductDialog";
 import StoreSetupDialog from "@/components/vendor/StoreSetupDialog";
@@ -290,7 +290,6 @@ const VendorProducts = ({ storeId, onUpdate, isAddProductOpen, setIsAddProductOp
           .update({
             name: product.name,
             price: priceNum,
-            category: product.category,
             stock_quantity: product.stock,
             is_available: product.active,
             description: product.description || null,
@@ -310,7 +309,6 @@ const VendorProducts = ({ storeId, onUpdate, isAddProductOpen, setIsAddProductOp
       const { error } = await supabase.from("products").insert({
         name: product.name,
         price: priceNum,
-        category: product.category,
         store_id: storeId,
         stock_quantity: product.stock,
         is_available: product.active,
