@@ -1,36 +1,101 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Trash2, Plus, Minus, ShoppingBag, ArrowLeft } from "lucide-react";
+import { Trash2, Plus, Minus, ShoppingBag, ArrowLeft, Loader2 } from "lucide-react";
 import { useState } from "react";
+import { useCart } from "@/contexts/CartContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import categoryRestaurante from "@/assets/category-restaurante.jpg";
 import categoryTalho from "@/assets/category-talho.jpg";
 
-const initialCartItems = [
-  { id: "1", name: "Muamba de Galinha", store: "MMM' All4You", price: 3500, quantity: 2, image: categoryRestaurante },
-  { id: "6", name: "Picanha 1kg", store: "Talho do Bairro", price: 5800, quantity: 1, image: categoryTalho },
-];
-
 const CartPage = () => {
-  const [items, setItems] = useState(initialCartItems);
+  const { items, updateQuantity, removeFromCart, clearCart, subtotal } = useCart();
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [deliveryAddress, setDeliveryAddress] = useState("");
   const [deliveryNotes, setDeliveryNotes] = useState("");
+  const [isPlacingOrder, setIsPlacingOrder] = useState(false);
 
-  const updateQty = (id: string, delta: number) => {
-    setItems((prev) => prev.map((item) => item.id === id ? { ...item, quantity: Math.max(0, item.quantity + delta) } : item).filter((item) => item.quantity > 0));
-  };
-  const removeItem = (id: string) => setItems((prev) => prev.filter((item) => item.id !== id));
-
-  const subtotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const deliveryFee = items.length > 0 ? 1500 : 0;
   const total = subtotal + deliveryFee;
 
   const storeGroups = items.reduce<Record<string, typeof items>>((acc, item) => {
-    if (!acc[item.store]) acc[item.store] = [];
-    acc[item.store].push(item);
+    if (!acc[item.storeName]) acc[item.storeName] = [];
+    acc[item.storeName].push(item);
     return acc;
   }, {});
+
+  const handlePlaceOrder = async () => {
+    if (!user) {
+      toast.error("Por favor, faça login para finalizar o pedido");
+      navigate("/auth");
+      return;
+    }
+
+    if (!deliveryAddress.trim()) {
+      toast.error("Por favor, insira um endereço de entrega");
+      return;
+    }
+
+    setIsPlacingOrder(true);
+    try {
+      // Group items by store to create separate orders if needed, or one order per store
+      // For now, let's create one order per store present in the cart
+      const storeIds = [...new Set(items.map(i => i.storeId))];
+
+      for (const storeId of storeIds) {
+        const storeItems = items.filter(i => i.storeId === storeId);
+        const storeSubtotal = storeItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
+
+        // 1. Create the order
+        const { data: order, error: orderError } = await supabase
+          .from("orders")
+          .insert({
+            customer_id: user.id,
+            store_id: storeId,
+            status: "pending",
+            delivery_address: deliveryAddress,
+            delivery_notes: deliveryNotes,
+            subtotal: storeSubtotal,
+            delivery_fee: 1500, // Fixed for simplicity
+            total: storeSubtotal + 1500
+          })
+          .select()
+          .single();
+
+        if (orderError) throw orderError;
+
+        // 2. Create order items
+        const orderItemsToInsert = storeItems.map(item => ({
+          order_id: order.id,
+          product_id: item.productId,
+          product_name: item.name,
+          quantity: item.quantity,
+          unit_price: item.price,
+          total_price: item.price * item.quantity
+        }));
+
+        const { error: itemsError } = await supabase
+          .from("order_items")
+          .insert(orderItemsToInsert);
+
+        if (itemsError) throw itemsError;
+      }
+
+      toast.success("Pedido realizado com sucesso!");
+      clearCart();
+      // Redirect to Client Dashboard - Orders tab
+      navigate("/cliente");
+    } catch (error) {
+      console.error("Erro ao realizar pedido:", error);
+      toast.error("Erro ao processar o seu pedido. Tente novamente.");
+    } finally {
+      setIsPlacingOrder(false);
+    }
+  };
 
   return (
     <>
@@ -56,18 +121,18 @@ const CartPage = () => {
                   </div>
                   <div className="divide-y divide-border">
                     {storeItems.map((item) => (
-                      <div key={item.id} className="p-4 flex gap-4 items-center">
+                      <div key={item.productId} className="p-4 flex gap-4 items-center">
                         <img src={item.image} alt={item.name} className="w-16 h-16 rounded-lg object-cover" />
                         <div className="flex-1 min-w-0">
                           <h4 className="font-body font-medium text-card-foreground truncate">{item.name}</h4>
                           <p className="text-sm text-accent font-semibold font-body">{item.price.toLocaleString("pt-AO")} Kz</p>
                         </div>
                         <div className="flex items-center gap-2">
-                          <button onClick={() => updateQty(item.id, -1)} className="w-8 h-8 rounded-full bg-muted flex items-center justify-center hover:bg-border transition-colors"><Minus className="h-3.5 w-3.5" /></button>
+                          <button onClick={() => updateQuantity(item.productId, -1)} className="w-8 h-8 rounded-full bg-muted flex items-center justify-center hover:bg-border transition-colors"><Minus className="h-3.5 w-3.5" /></button>
                           <span className="font-semibold text-sm w-6 text-center">{item.quantity}</span>
-                          <button onClick={() => updateQty(item.id, 1)} className="w-8 h-8 rounded-full bg-accent text-accent-foreground flex items-center justify-center hover:bg-accent/80 transition-colors"><Plus className="h-3.5 w-3.5" /></button>
+                          <button onClick={() => updateQuantity(item.productId, 1)} className="w-8 h-8 rounded-full bg-accent text-accent-foreground flex items-center justify-center hover:bg-accent/80 transition-colors"><Plus className="h-3.5 w-3.5" /></button>
                         </div>
-                        <button onClick={() => removeItem(item.id)} className="text-muted-foreground hover:text-destructive transition-colors"><Trash2 className="h-4 w-4" /></button>
+                        <button onClick={() => removeFromCart(item.productId)} className="text-muted-foreground hover:text-destructive transition-colors"><Trash2 className="h-4 w-4" /></button>
                       </div>
                     ))}
                   </div>
@@ -90,7 +155,20 @@ const CartPage = () => {
                   <div className="flex justify-between"><span className="text-muted-foreground">Entrega (K)</span><span className="text-card-foreground font-medium">{deliveryFee.toLocaleString("pt-AO")} Kz</span></div>
                   <div className="flex justify-between pt-2 border-t border-border text-base font-bold"><span>Total</span><span className="text-accent">{total.toLocaleString("pt-AO")} Kz</span></div>
                 </div>
-                <Button className="w-full bg-accent text-accent-foreground hover:bg-accent/90 rounded-full py-6 font-semibold mt-4">Finalizar Pedido</Button>
+                <Button
+                  onClick={handlePlaceOrder}
+                  disabled={isPlacingOrder}
+                  className="w-full bg-accent text-accent-foreground hover:bg-accent/90 rounded-full py-6 font-semibold mt-4"
+                >
+                  {isPlacingOrder ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Processando...
+                    </>
+                  ) : (
+                    "Finalizar Pedido"
+                  )}
+                </Button>
                 <p className="text-xs text-muted-foreground font-body text-center">Pagamento por referência Multicaixa ou transferência</p>
               </div>
             </div>

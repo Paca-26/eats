@@ -1,30 +1,84 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { UtensilsCrossed, ShoppingCart, Beef, Fish, Store, Search, ArrowRight, MapPin } from "lucide-react";
+import { UtensilsCrossed, ShoppingCart, Beef, Fish, Store, Search, ArrowRight, MapPin, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import categoryRestaurante from "@/assets/category-restaurante.jpg";
 import categorySupermercado from "@/assets/category-supermercado.jpg";
 import categoryTalho from "@/assets/category-talho.jpg";
 import categoryPeixaria from "@/assets/category-peixaria.jpg";
 import categoryMercearia from "@/assets/category-mercearia.jpg";
 
-const categories = [
-  { name: "Restaurantes", slug: "restaurantes", icon: UtensilsCrossed, image: categoryRestaurante, count: 6, description: "Refeições prontas e comida preparada" },
-  { name: "Supermercados", slug: "supermercados", icon: ShoppingCart, image: categorySupermercado, count: 4, description: "Compras completas para o dia-a-dia" },
-  { name: "Talhos", slug: "talhos", icon: Beef, image: categoryTalho, count: 8, description: "Carnes frescas e de qualidade" },
-  { name: "Peixarias", slug: "peixarias", icon: Fish, image: categoryPeixaria, count: 5, description: "Peixe e marisco fresco" },
-  { name: "Mercearias", slug: "mercearias", icon: Store, image: categoryMercearia, count: 12, description: "Produtos do quotidiano e especialidades" },
-];
+const ICON_MAP: Record<string, any> = {
+  "Restaurantes": UtensilsCrossed,
+  "Supermercados": ShoppingCart,
+  "Talhos": Beef,
+  "Peixarias": Fish,
+  "Mercearias": Store,
+};
+
+const IMAGE_MAP: Record<string, string> = {
+  "Restaurantes": categoryRestaurante,
+  "Supermercados": categorySupermercado,
+  "Talhos": categoryTalho,
+  "Peixarias": categoryPeixaria,
+  "Mercearias": categoryMercearia,
+};
 
 const CategoriesPage = () => {
   const [query, setQuery] = useState("");
+  const [categories, setCategories] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from("categories")
+          .select("*")
+          .order("sort_order", { ascending: true });
+
+        if (error) throw error;
+
+        // Fetch store counts for each category
+        const { data: storesData } = await supabase
+          .from("stores")
+          .select("category_id");
+
+        const formatted = data.map(cat => ({
+          ...cat,
+          icon: ICON_MAP[cat.name] || Store,
+          image: cat.image_url || IMAGE_MAP[cat.name] || categoryMercearia,
+          count: storesData?.filter(s => s.category_id === cat.id).length || 0
+        }));
+
+        setCategories(formatted);
+      } catch (error) {
+        console.error("Erro ao carregar categorias:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
 
   const filtered = query.trim()
     ? categories.filter((c) =>
-        c.name.toLowerCase().includes(query.toLowerCase()) ||
-        c.description.toLowerCase().includes(query.toLowerCase())
-      )
+      c.name.toLowerCase().includes(query.toLowerCase()) ||
+      (c.description && c.description.toLowerCase().includes(query.toLowerCase()))
+    )
     : categories;
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-20 flex flex-col items-center justify-center gap-4">
+        <Loader2 className="h-10 w-10 text-accent animate-spin" />
+        <p className="font-body text-muted-foreground animate-pulse">Carregando categorias...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -68,13 +122,13 @@ const CategoriesPage = () => {
             const Icon = cat.icon;
             return (
               <motion.div
-                key={cat.slug}
+                key={cat.id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.07 }}
               >
                 <Link
-                  to={`/categoria/${cat.slug}`}
+                  to={`/categoria/${cat.id}`}
                   className="group relative h-52 rounded-2xl overflow-hidden block shadow-md hover:shadow-xl transition-all duration-500 hover:-translate-y-1"
                 >
                   <img
@@ -89,7 +143,7 @@ const CategoriesPage = () => {
                         <Icon className="h-5 w-5 text-primary-foreground" />
                       </div>
                       <h3 className="font-display text-xl font-bold text-primary-foreground">{cat.name}</h3>
-                      <p className="text-sm text-primary-foreground/70 font-body mt-0.5">{cat.description}</p>
+                      <p className="text-sm text-primary-foreground/70 font-body mt-0.5 line-clamp-1">{cat.description}</p>
                       <div className="flex items-center gap-1.5 mt-1.5">
                         <MapPin className="h-3.5 w-3.5 text-accent" />
                         <span className="text-xs text-primary-foreground/60 font-body">{cat.count} lojas disponíveis</span>

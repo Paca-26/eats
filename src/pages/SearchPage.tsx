@@ -1,30 +1,82 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import StoreCard from "@/components/StoreCard";
-import { Search } from "lucide-react";
-import categoryTalho from "@/assets/category-talho.jpg";
-import categoryPeixaria from "@/assets/category-peixaria.jpg";
-import categoryMercearia from "@/assets/category-mercearia.jpg";
+import { Search, Loader2, Store as StoreIcon, ShoppingBag } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 import categoryRestaurante from "@/assets/category-restaurante.jpg";
-import categorySupermercado from "@/assets/category-supermercado.jpg";
-
-const allStores = [
-  { name: "MMM' All4You", slug: "mmm-all4you", category: "Restaurantes", rating: 4.8, deliveryTime: "30-45 min", zone: "Talatona", featured: true, image: categoryRestaurante },
-  { name: "Grelha de Ouro", slug: "grelha-de-ouro", category: "Restaurantes", rating: 4.4, deliveryTime: "25-35 min", zone: "Talatona", featured: false, image: categoryRestaurante },
-  { name: "Talho do Bairro", slug: "talho-do-bairro", category: "Talhos", rating: 4.5, deliveryTime: "25-35 min", zone: "Talatona", featured: false, image: categoryTalho },
-  { name: "Talho Premium", slug: "talho-premium", category: "Talhos", rating: 4.7, deliveryTime: "20-30 min", zone: "Talatona", featured: true, image: categoryTalho },
-  { name: "Peixaria Atlântico", slug: "peixaria-atlantico", category: "Peixarias", rating: 4.6, deliveryTime: "30-40 min", zone: "Talatona", featured: true, image: categoryPeixaria },
-  { name: "Mercearia da Avó", slug: "mercearia-da-avo", category: "Mercearias", rating: 4.3, deliveryTime: "20-30 min", zone: "Talatona", featured: false, image: categoryMercearia },
-  { name: "Mercearia Central", slug: "mercearia-central", category: "Mercearias", rating: 4.1, deliveryTime: "15-25 min", zone: "Talatona", featured: false, image: categoryMercearia },
-  { name: "Super Luanda", slug: "super-luanda", category: "Supermercados", rating: 4.7, deliveryTime: "35-50 min", zone: "Talatona", featured: true, image: categorySupermercado },
-  { name: "Maxi Plus", slug: "maxi-plus", category: "Supermercados", rating: 4.2, deliveryTime: "40-55 min", zone: "Talatona", featured: false, image: categorySupermercado },
-];
 
 const SearchPage = () => {
   const [query, setQuery] = useState("");
-  const filtered = query.trim()
-    ? allStores.filter((s) => s.name.toLowerCase().includes(query.toLowerCase()) || s.category.toLowerCase().includes(query.toLowerCase()))
-    : [];
+  const [results, setResults] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const searchData = async () => {
+      if (query.trim().length < 2) {
+        setResults([]);
+        return;
+      }
+
+      setLoading(true);
+      try {
+        // Search stores by name or category name
+        const { data: storesData, error: storesError } = await supabase
+          .from("stores")
+          .select("*, categories(name)")
+          .or(`name.ilike.%${query}%,description.ilike.%${query}%`)
+          .eq("is_active", true);
+
+        if (storesError) throw storesError;
+
+        // Search products by name (to show the stores that have them)
+        const { data: productsData, error: productsError } = await supabase
+          .from("products")
+          .select("store_id")
+          .ilike("name", `%${query}%`)
+          .eq("is_available", true);
+
+        if (productsError) throw productsError;
+
+        // Combine result: stores that match OR stores that have matching products
+        const storeIdsFromProducts = (productsData || []).map(p => p.store_id);
+        const combinedStoreIds = new Set([
+          ...(storesData || []).map(s => s.id),
+          ...storeIdsFromProducts
+        ]);
+
+        if (combinedStoreIds.size === 0) {
+          setResults([]);
+          return;
+        }
+
+        // Final fetch for all mapped stores with full details
+        const { data: finalStores, error: finalError } = await supabase
+          .from("stores")
+          .select("*, categories(name), zones(name)")
+          .in("id", Array.from(combinedStoreIds))
+          .eq("is_active", true);
+
+        if (finalError) throw finalError;
+
+        const formatted = (finalStores || []).map(s => ({
+          ...s,
+          category: s.categories?.name || "Loja",
+          zone: s.zones?.name || "Luanda",
+          image: s.logo_url || categoryRestaurante,
+          deliveryTime: "30-45 min"
+        }));
+
+        setResults(formatted);
+      } catch (error) {
+        console.error("Erro na pesquisa:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    const timer = setTimeout(searchData, 500);
+    return () => clearTimeout(timer);
+  }, [query]);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -40,19 +92,25 @@ const SearchPage = () => {
           autoFocus
         />
       </div>
-      {query.trim() === "" ? (
+
+      {loading ? (
+        <div className="text-center py-16">
+          <Loader2 className="h-10 w-10 mx-auto text-accent animate-spin mb-3" />
+          <p className="text-muted-foreground font-body">Pesquisando...</p>
+        </div>
+      ) : query.trim() === "" ? (
         <div className="text-center py-16">
           <Search className="h-12 w-12 mx-auto text-muted-foreground/30 mb-3" />
           <p className="text-muted-foreground font-body">Digite para pesquisar lojas e produtos.</p>
         </div>
-      ) : filtered.length === 0 ? (
+      ) : results.length === 0 ? (
         <div className="text-center py-16">
           <p className="text-muted-foreground font-body">Nenhum resultado para "{query}".</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filtered.map((store) => (
-            <Link key={store.slug} to={`/loja/${store.slug}`}>
+          {results.map((store) => (
+            <Link key={store.id} to={`/loja/${store.id}`}>
               <StoreCard {...store} />
             </Link>
           ))}

@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { CartProvider } from "@/contexts/CartContext";
 import MainLayout from "@/components/MainLayout";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
@@ -34,33 +35,35 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
-          <Routes>
-            {/* Pages with shared Navbar + MobileBottomNav */}
-            <Route element={<MainLayout />}>
-              <Route path="/" element={<Index />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/carrinho" element={<CartPage />} />
-              <Route path="/categorias" element={<CategoriesPage />} />
-              <Route path="/pesquisar" element={<SearchPage />} />
-              <Route path="/categoria/:categorySlug" element={<CategoryPage />} />
-              <Route path="/loja/:storeSlug" element={<StorePage />} />
-              <Route path="/ajuda" element={<AjudaPage />} />
-              <Route path="/contacto" element={<ContactoPage />} />
-              <Route path="/termos" element={<TermosPage />} />
-              <Route path="/privacidade" element={<PrivacidadePage />} />
-              <Route path="/promocoes" element={<PromocoesPage />} />
-              <Route path="/esqueci-senha" element={<ForgotPassword />} />
-              <Route path="/reset-password" element={<ResetPassword />} />
-            </Route>
+          <CartProvider>
+            <Routes>
+              {/* Pages with shared Navbar + MobileBottomNav */}
+              <Route element={<MainLayout />}>
+                <Route path="/" element={<Index />} />
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/carrinho" element={<CartPage />} />
+                <Route path="/categorias" element={<CategoriesPage />} />
+                <Route path="/pesquisar" element={<SearchPage />} />
+                <Route path="/categoria/:categorySlug" element={<CategoryPage />} />
+                <Route path="/loja/:storeSlug" element={<StorePage />} />
+                <Route path="/ajuda" element={<AjudaPage />} />
+                <Route path="/contacto" element={<ContactoPage />} />
+                <Route path="/termos" element={<TermosPage />} />
+                <Route path="/privacidade" element={<PrivacidadePage />} />
+                <Route path="/promocoes" element={<PromocoesPage />} />
+                <Route path="/esqueci-senha" element={<ForgotPassword />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
+              </Route>
 
-            {/* Dashboard pages (own navigation) */}
-            <Route path="/cliente" element={<ClientDashboard />} />
-            <Route path="/vendedor" element={<VendorDashboard />} />
-            <Route path="/logistica" element={<LogisticsDashboard />} />
-            <Route path="/admin" element={<AdminDashboard />} />
+              {/* Dashboard pages (own navigation) */}
+              <Route path="/cliente" element={<ClientDashboard />} />
+              <Route path="/vendedor" element={<VendorDashboard />} />
+              <Route path="/logistica" element={<LogisticsDashboard />} />
+              <Route path="/admin" element={<AdminDashboard />} />
 
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </CartProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>

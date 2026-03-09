@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useCart } from "@/contexts/CartContext";
 import categoryTalho from "@/assets/category-talho.jpg";
 import categoryPeixaria from "@/assets/category-peixaria.jpg";
 import categoryMercearia from "@/assets/category-mercearia.jpg";
@@ -174,7 +175,7 @@ const StorePage = () => {
   const { storeSlug } = useParams<{ storeSlug: string }>();
   const [store, setStore] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [cart, setCart] = useState<Record<string, number>>({});
+  const { items, addToCart, updateQuantity, totalItems, subtotal } = useCart();
   const [liked, setLiked] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
@@ -262,20 +263,26 @@ const StorePage = () => {
     );
   }
 
-  const addToCart = (productId: string) => setCart((prev) => ({ ...prev, [productId]: (prev[productId] || 0) + 1 }));
-  const removeFromCart = (productId: string) => {
-    setCart((prev) => {
-      const newCart = { ...prev };
-      if (newCart[productId] > 1) newCart[productId]--;
-      else delete newCart[productId];
-      return newCart;
+  const handleAddToCart = (product: any) => {
+    addToCart({
+      id: Math.random().toString(36).substr(2, 9),
+      productId: product.id,
+      name: product.name,
+      price: product.price,
+      image: product.image_url || product.image || categoryRestaurante,
+      storeId: store.id,
+      storeName: store.name
     });
+  };
+
+  const getItemQuantity = (productId: string) => {
+    return items.find((i) => i.productId === productId)?.quantity || 0;
   };
 
   const productCategories = [...new Set(store.products.map((p: any) => p.category))];
   const visibleCategories = activeCategory ? [activeCategory] : productCategories;
-  const totalItems = Object.values(cart).reduce((a: number, b: number) => a + b, 0);
-  const totalPrice = store.products.reduce((sum: number, p: any) => sum + (cart[p.id] || 0) * p.price, 0);
+  const totalPrice = subtotal;
+
 
   return (
     <>
@@ -387,18 +394,18 @@ const StorePage = () => {
                     <p className="text-xs text-muted-foreground font-body mt-0.5 line-clamp-2">{product.description}</p>
                     <div className="flex items-center justify-between mt-2.5">
                       <span className="font-bold text-accent font-body text-sm">{product.price.toLocaleString("pt-AO")} Kz</span>
-                      {cart[product.id] ? (
+                      {getItemQuantity(product.id) > 0 ? (
                         <div className="flex items-center gap-1.5">
-                          <button onClick={() => removeFromCart(product.id)} className="w-7 h-7 rounded-full bg-muted flex items-center justify-center hover:bg-destructive/10 hover:text-destructive transition-colors">
+                          <button onClick={() => updateQuantity(product.id, -1)} className="w-7 h-7 rounded-full bg-muted flex items-center justify-center hover:bg-destructive/10 hover:text-destructive transition-colors">
                             <Minus className="h-3.5 w-3.5" />
                           </button>
-                          <span className="font-bold text-sm w-5 text-center font-body">{cart[product.id]}</span>
-                          <button onClick={() => addToCart(product.id)} className="w-7 h-7 rounded-full bg-accent text-accent-foreground flex items-center justify-center hover:bg-accent/80 transition-colors">
+                          <span className="font-bold text-sm w-5 text-center font-body">{getItemQuantity(product.id)}</span>
+                          <button onClick={() => updateQuantity(product.id, 1)} className="w-7 h-7 rounded-full bg-accent text-accent-foreground flex items-center justify-center hover:bg-accent/80 transition-colors">
                             <Plus className="h-3.5 w-3.5" />
                           </button>
                         </div>
                       ) : (
-                        <Button size="sm" onClick={() => addToCart(product.id)} className="bg-accent text-accent-foreground hover:bg-accent/90 rounded-full text-xs h-7 px-3 font-body shadow-sm">
+                        <Button size="sm" onClick={() => handleAddToCart(product)} className="bg-accent text-accent-foreground hover:bg-accent/90 rounded-full text-xs h-7 px-3 font-body shadow-sm">
                           <Plus className="h-3 w-3 mr-0.5" /> Adicionar
                         </Button>
                       )}
