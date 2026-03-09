@@ -290,6 +290,7 @@ const VendorProducts = ({ storeId, onUpdate, isAddProductOpen, setIsAddProductOp
           .update({
             name: product.name,
             price: priceNum,
+            category: product.category,
             stock_quantity: product.stock,
             is_available: product.active,
             description: product.description || null,
@@ -309,6 +310,7 @@ const VendorProducts = ({ storeId, onUpdate, isAddProductOpen, setIsAddProductOp
       const { error } = await supabase.from("products").insert({
         name: product.name,
         price: priceNum,
+        category: product.category,
         store_id: storeId,
         stock_quantity: product.stock,
         is_available: product.active,
