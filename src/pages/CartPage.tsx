@@ -6,9 +6,10 @@ import { Trash2, Plus, Minus, ShoppingBag, ArrowLeft, Loader2 } from "lucide-rea
 import { useState } from "react";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
-import { useDemoAuth } from "@/contexts/DemoAuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import categoryRestaurante from "@/assets/category-restaurante.jpg";
+import categoryTalho from "@/assets/category-talho.jpg";
 
 const CartPage = () => {
   const { items, updateQuantity, removeFromCart, clearCart, subtotal } = useCart();
