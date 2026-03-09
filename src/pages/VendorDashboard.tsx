@@ -252,7 +252,7 @@ const VendorProducts = ({ storeId, onUpdate, isAddProductOpen, setIsAddProductOp
       setProducts(data.map(p => ({
         name: p.name,
         price: `${Number(p.price).toLocaleString("pt-AO")} Kz`,
-        category: p.category || "Geral",
+        category: "Geral",
         stock: p.stock_quantity || 0,
         active: p.is_available,
         description: p.description || "",
