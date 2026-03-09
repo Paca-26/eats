@@ -4,8 +4,10 @@ import DashboardShell from "@/components/DashboardShell";
 import BottomNav, { BottomNavItem } from "@/components/BottomNav";
 import StatCard from "@/components/StatCard";
 import AnimatedTabContent from "@/components/AnimatedTabContent";
-import { ShoppingBag, Heart, MapPin, Clock, Home, Search, User, Bell, UtensilsCrossed, ShoppingCart, Beef, Fish, Star, ChevronRight, Package, CreditCard, HelpCircle, LogOut, Edit, Camera, Phone, Mail, Sparkles, Zap, Timer } from "lucide-react";
+import { ShoppingBag, Heart, MapPin, Clock, Home, Search, User, Bell, UtensilsCrossed, ShoppingCart, Beef, Fish, Star, ChevronRight, Package, CreditCard, HelpCircle, LogOut, Edit, Camera, Phone, Mail, Zap, Timer } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import { useDemoAuth } from "@/contexts/DemoAuthContext";
 import { useDisplayUser } from "@/hooks/useDisplayUser";
@@ -25,19 +27,20 @@ const ClientDashboard = () => {
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
+  const fetchProfile = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data } = await supabase
+        .from("profiles")
+        .select("*, zones(name)")
+        .eq("id", user.id)
+        .maybeSingle();
+      setProfile(data);
+    }
+    setLoading(false);
+  };
+
   useEffect(() => {
-    const fetchProfile = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data } = await supabase
-          .from("profiles")
-          .select("*, zones(name)")
-          .eq("id", user.id)
-          .maybeSingle();
-        setProfile(data);
-      }
-      setLoading(false);
-    };
     fetchProfile();
   }, []);
 
@@ -47,7 +50,7 @@ const ClientDashboard = () => {
       case "explore": return <ClientExplore />;
       case "orders": return <ClientOrders />;
       case "alerts": return <ClientAlerts />;
-      case "profile": return <ClientProfile profile={profile} />;
+      case "profile": return <ClientProfile profile={profile} onRefresh={fetchProfile} />;
       default: return <ClientHome profile={profile} />;
     }
   };
@@ -353,64 +356,195 @@ const LogoutButton = () => {
   );
 };
 
-const ClientProfile = ({ profile }: { profile: any }) => {
+const ClientProfile = ({ profile, onRefresh }: { profile: any; onRefresh: () => void }) => {
   const { name, email, initials } = useDisplayUser();
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [zones, setZones] = useState<any[]>([]);
+
+  const [editForm, setEditForm] = useState({
+    full_name: profile?.full_name || "",
+    phone: profile?.phone || "",
+    zone_id: profile?.zone_id || "",
+  });
+
+  useEffect(() => {
+    const fetchZones = async () => {
+      const { data } = await supabase
+        .from("zones")
+        .select("*")
+        .eq("is_active", true)
+        .order("name");
+      if (data) setZones(data);
+    };
+    fetchZones();
+  }, []);
+
+  useEffect(() => {
+    if (profile) {
+      setEditForm({
+        full_name: profile.full_name || "",
+        phone: profile.phone || "",
+        zone_id: profile.zone_id || "",
+      });
+    }
+  }, [profile]);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Utilizador não autenticado");
+
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          full_name: editForm.full_name,
+          phone: editForm.phone,
+          zone_id: editForm.zone_id === "" ? null : editForm.zone_id,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", user.id);
+
+      if (error) throw error;
+
+      toast.success("Perfil atualizado com sucesso!");
+      setIsEditing(false);
+      onRefresh();
+    } catch (error: any) {
+      console.error("Erro ao atualizar perfil:", error);
+      toast.error(`Erro: ${error.message}`);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const displayName = profile?.full_name || name;
   const displayEmail = email;
 
   return (
     <div className="space-y-6">
       <h2 className="font-display text-2xl font-bold text-foreground">Meu Perfil</h2>
-      <div className="bg-card border border-border rounded-3xl p-8 flex flex-col items-center text-center shadow-sm relative overflow-hidden group">
-        <div className="absolute top-0 left-0 w-full h-24 bg-gradient-to-r from-blue-500/10 to-indigo-500/10" />
-        <div className="relative mb-5 z-10 pt-2">
-          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 border-4 border-white dark:border-zinc-800 shadow-xl flex items-center justify-center text-white text-3xl font-display font-bold overflow-hidden">
-            {profile?.avatar_url ? (
-              <img src={profile.avatar_url} alt={displayName} className="w-full h-full object-cover" />
-            ) : (
-              <span>{initials}</span>
-            )}
-          </div>
-          <button className="absolute bottom-0 right-0 p-2 rounded-xl bg-accent text-accent-foreground shadow-lg hover:scale-110 active:scale-90 transition-transform group-hover:rotate-12">
-            <Camera className="h-4 w-4" />
-          </button>
-        </div>
-        <div className="relative z-10 w-full">
-          <h3 className="font-display font-bold text-foreground text-xl leading-tight">{displayName}</h3>
-          <p className="text-sm text-muted-foreground font-body mt-1">{displayEmail}</p>
 
-          <div className="flex flex-wrap items-center justify-center gap-3 mt-6">
-            <div className="flex items-center gap-2 bg-muted/50 px-3 py-1.5 rounded-2xl border border-border/50 text-xs text-muted-foreground font-body">
-              <MapPin className="h-3.5 w-3.5 text-blue-500" /> {profile?.zones?.name || "Luanda"}
+      {!isEditing ? (
+        <>
+          <div className="bg-card border border-border rounded-3xl p-8 flex flex-col items-center text-center shadow-sm relative overflow-hidden group">
+            <div className="absolute top-0 left-0 w-full h-24 bg-gradient-to-r from-blue-500/10 to-indigo-500/10" />
+            <div className="relative mb-5 z-10 pt-2">
+              <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 border-4 border-white dark:border-zinc-800 shadow-xl flex items-center justify-center text-white text-3xl font-display font-bold overflow-hidden">
+                {profile?.avatar_url ? (
+                  <img src={profile.avatar_url} alt={displayName} className="w-full h-full object-cover" />
+                ) : (
+                  <span>{initials}</span>
+                )}
+              </div>
+              <button className="absolute bottom-0 right-0 p-2 rounded-xl bg-accent text-accent-foreground shadow-lg hover:scale-110 active:scale-90 transition-transform group-hover:rotate-12">
+                <Camera className="h-4 w-4" />
+              </button>
             </div>
-            <div className="flex items-center gap-2 bg-muted/50 px-3 py-1.5 rounded-2xl border border-border/50 text-xs text-muted-foreground font-body">
-              <Phone className="h-3.5 w-3.5 text-emerald-500" /> {profile?.phone || "Não definido"}
+            <div className="relative z-10 w-full">
+              <h3 className="font-display font-bold text-foreground text-xl leading-tight">{displayName}</h3>
+              <p className="text-sm text-muted-foreground font-body mt-1">{displayEmail}</p>
+
+              <div className="flex flex-wrap items-center justify-center gap-3 mt-6">
+                <div className="flex items-center gap-2 bg-muted/50 px-3 py-1.5 rounded-2xl border border-border/50 text-xs text-muted-foreground font-body">
+                  <MapPin className="h-3.5 w-3.5 text-blue-500" /> {profile?.zones?.name || "Luanda"}
+                </div>
+                <div className="flex items-center gap-2 bg-muted/50 px-3 py-1.5 rounded-2xl border border-border/50 text-xs text-muted-foreground font-body">
+                  <Phone className="h-3.5 w-3.5 text-emerald-500" /> {profile?.phone || "Não definido"}
+                </div>
+              </div>
             </div>
           </div>
+
+          <div className="bg-card border border-border rounded-2xl overflow-hidden divide-y divide-border">
+            {[
+              { icon: Edit, label: "Editar Perfil", desc: "Nome, email, telefone", action: () => setIsEditing(true) },
+              { icon: MapPin, label: "Endereços", desc: "2 endereços guardados" },
+              { icon: CreditCard, label: "Pagamentos", desc: "Multicaixa Express" },
+              { icon: Bell, label: "Notificações", desc: "Configurar alertas" },
+              { icon: Star, label: "Programa de Pontos", desc: "150 pontos acumulados" },
+              { icon: HelpCircle, label: "Ajuda & Suporte", desc: "FAQ, contacto" },
+            ].map((item, i) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={i}
+                  onClick={item.action}
+                  className="w-full flex items-center gap-4 p-4 hover:bg-muted/50 transition-colors text-left"
+                >
+                  <div className="p-2 rounded-xl bg-muted"><Icon className="h-4 w-4 text-foreground" /></div>
+                  <div className="flex-1">
+                    <span className="font-body font-semibold text-foreground text-sm block">{item.label}</span>
+                    <span className="text-xs text-muted-foreground font-body">{item.desc}</span>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                </button>
+              );
+            })}
+          </div>
+        </>
+      ) : (
+        <div className="bg-card border border-border rounded-3xl p-6 shadow-sm space-y-6">
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <label htmlFor="full_name" className="text-sm font-body font-semibold px-1">Nome Completo</label>
+              <Input
+                id="full_name"
+                value={editForm.full_name}
+                onChange={(e) => setEditForm({ ...editForm, full_name: e.target.value })}
+                className="rounded-xl border-border bg-background h-12"
+                placeholder="Introduza o seu nome"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="phone" className="text-sm font-body font-semibold px-1">Telefone</label>
+              <Input
+                id="phone"
+                value={editForm.phone}
+                onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                className="rounded-xl border-border bg-background h-12"
+                placeholder="Ex: 923 000 000"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label htmlFor="zone" className="text-sm font-body font-semibold px-1">Localização (Zona)</label>
+              <select
+                id="zone"
+                value={editForm.zone_id || ""}
+                onChange={(e) => setEditForm({ ...editForm, zone_id: e.target.value })}
+                className="w-full rounded-xl border border-border bg-background h-12 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-accent font-body"
+              >
+                <option value="">Selecionar zona...</option>
+                {zones.map((zone) => (
+                  <option key={zone.id} value={zone.id}>{zone.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <Button
+              variant="outline"
+              onClick={() => setIsEditing(false)}
+              className="flex-1 h-12 rounded-xl font-body font-bold"
+              disabled={isSaving}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSave}
+              className="flex-1 h-12 rounded-xl font-body font-bold bg-accent text-white hover:bg-accent/90"
+              disabled={isSaving}
+            >
+              {isSaving ? "A guardar..." : "Guardar Alterações"}
+            </Button>
+          </div>
         </div>
-      </div>
-      <div className="bg-card border border-border rounded-2xl overflow-hidden divide-y divide-border">
-        {[
-          { icon: Edit, label: "Editar Perfil", desc: "Nome, email, telefone" },
-          { icon: MapPin, label: "Endereços", desc: "2 endereços guardados" },
-          { icon: CreditCard, label: "Pagamentos", desc: "Multicaixa Express" },
-          { icon: Bell, label: "Notificações", desc: "Configurar alertas" },
-          { icon: Star, label: "Programa de Pontos", desc: "150 pontos acumulados" },
-          { icon: HelpCircle, label: "Ajuda & Suporte", desc: "FAQ, contacto" },
-        ].map((item, i) => {
-          const Icon = item.icon;
-          return (
-            <button key={i} className="w-full flex items-center gap-4 p-4 hover:bg-muted/50 transition-colors text-left">
-              <div className="p-2 rounded-xl bg-muted"><Icon className="h-4 w-4 text-foreground" /></div>
-              <div className="flex-1">
-                <span className="font-body font-semibold text-foreground text-sm block">{item.label}</span>
-                <span className="text-xs text-muted-foreground font-body">{item.desc}</span>
-              </div>
-              <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            </button>
-          );
-        })}
-      </div>
+      )}
+
       <LogoutButton />
     </div>
   );
