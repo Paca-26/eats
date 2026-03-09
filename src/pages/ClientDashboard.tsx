@@ -4,7 +4,7 @@ import DashboardShell from "@/components/DashboardShell";
 import BottomNav, { BottomNavItem } from "@/components/BottomNav";
 import StatCard from "@/components/StatCard";
 import AnimatedTabContent from "@/components/AnimatedTabContent";
-import { ShoppingBag, Heart, MapPin, Clock, Home, Search, User, Bell, UtensilsCrossed, ShoppingCart, Beef, Fish, Star, ChevronRight, Package, CreditCard, HelpCircle, LogOut, Edit, Camera, Phone, Mail, Zap, Timer, Store } from "lucide-react";
+import { ShoppingBag, Heart, MapPin, Clock, Home, Search, User, Bell, UtensilsCrossed, ShoppingCart, Beef, Fish, Star, ChevronRight, Package, CreditCard, HelpCircle, LogOut, Edit, Camera, Phone, Mail, Zap, Timer, Store, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -48,7 +48,7 @@ const ClientDashboard = () => {
     switch (activeTab) {
       case "home": return <ClientHome profile={profile} />;
       case "explore": return <ClientExplore />;
-      case "orders": return <ClientOrders />;
+      case "orders": return <ClientOrders onNewOrder={() => setActiveTab("explore")} />;
       case "alerts": return <ClientAlerts />;
       case "profile": return <ClientProfile profile={profile} onRefresh={fetchProfile} />;
       default: return <ClientHome profile={profile} />;
@@ -312,44 +312,262 @@ const ClientExplore = () => {
   );
 };
 
-const ClientOrders = () => {
+const ClientOrders = ({ onNewOrder }: { onNewOrder: () => void }) => {
   const [filter, setFilter] = useState("all");
-  const orders = [
-    { id: "#1045", store: "MMM' All4You", date: "Hoje, 14:30", status: "Em preparação", statusColor: "bg-amber-100 text-amber-700", items: "2x Frango, 1x Sumo Natural", total: "4.500 Kz" },
-    { id: "#1044", store: "Peixaria Atlântico", date: "Hoje, 11:20", status: "A caminho", statusColor: "bg-blue-100 text-blue-700", items: "1kg Camarão, 2kg Corvina", total: "12.000 Kz" },
-    { id: "#1040", store: "Super Luanda", date: "Ontem", status: "Entregue", statusColor: "bg-emerald-100 text-emerald-700", items: "Arroz 5kg, Óleo, Feijão", total: "8.200 Kz" },
-    { id: "#1035", store: "Talho Premium", date: "25 Fev", status: "Entregue", statusColor: "bg-emerald-100 text-emerald-700", items: "2kg Picanha, 1kg Costela", total: "15.800 Kz" },
-    { id: "#1028", store: "Mercearia da Avó", date: "23 Fev", status: "Cancelado", statusColor: "bg-red-100 text-red-700", items: "Temperos variados", total: "3.200 Kz" },
-  ];
+  const [searchQuery, setSearchQuery] = useState("");
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+  const [orderItems, setOrderItems] = useState<any[]>([]);
+  const [loadingItems, setLoadingItems] = useState(false);
+
+  useEffect(() => {
+    const fetchOrders = async () => {
+      setLoading(true);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data, error } = await supabase
+          .from("orders")
+          .select("*, stores(name, logo_url)")
+          .eq("customer_id", user.id)
+          .order("created_at", { ascending: false });
+
+        if (error) throw error;
+        if (data) setOrders(data);
+      } catch (error) {
+        console.error("Erro ao procurar encomendas:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchOrders();
+  }, []);
+
+  const fetchOrderItems = async (orderId: string) => {
+    setLoadingItems(true);
+    try {
+      const { data, error } = await supabase
+        .from("order_items")
+        .select("*")
+        .eq("order_id", orderId);
+      if (error) throw error;
+      if (data) setOrderItems(data);
+    } catch (error) {
+      console.error("Erro ao procurar itens da encomenda:", error);
+    } finally {
+      setLoadingItems(false);
+    }
+  };
+
+  const handleOpenDetails = (order: any) => {
+    setSelectedOrder(order);
+    fetchOrderItems(order.id);
+  };
+
+  const filteredOrders = orders.filter(order => {
+    const matchesSearch = order.stores?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      order.id.toLowerCase().includes(searchQuery.toLowerCase());
+
+    let matchesFilter = true;
+    if (filter === "active") {
+      matchesFilter = ["Pendente", "Em preparação", "A caminho"].includes(order.status);
+    } else if (filter === "delivered") {
+      matchesFilter = order.status === "Entregue";
+    } else if (filter === "cancelled") {
+      matchesFilter = order.status === "Cancelado";
+    }
+
+    return matchesSearch && matchesFilter;
+  });
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "Pendente": return "bg-zinc-100 text-zinc-600";
+      case "Em preparação": return "bg-amber-100 text-amber-700";
+      case "A caminho": return "bg-blue-100 text-blue-700";
+      case "Entregue": return "bg-emerald-100 text-emerald-700";
+      case "Cancelado": return "bg-red-100 text-red-700";
+      default: return "bg-muted text-muted-foreground";
+    }
+  };
+
+  if (selectedOrder) {
+    return (
+      <div className="space-y-6">
+        <button
+          onClick={() => setSelectedOrder(null)}
+          className="flex items-center gap-2 text-sm font-body font-bold text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" /> Voltar aos pedidos
+        </button>
+
+        <div className="bg-card border border-border rounded-3xl p-6 shadow-sm">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 border-b border-border pb-6">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center overflow-hidden shrink-0">
+                {selectedOrder.stores?.logo_url ? (
+                  <img src={selectedOrder.stores.logo_url} alt={selectedOrder.stores.name} className="w-full h-full object-cover" />
+                ) : (
+                  <Store className="h-6 w-6 text-muted-foreground" />
+                )}
+              </div>
+              <div>
+                <h3 className="font-display font-bold text-xl text-foreground">{selectedOrder.stores?.name}</h3>
+                <p className="text-xs text-muted-foreground font-body">Pedido #{selectedOrder.id.slice(0, 8)}</p>
+              </div>
+            </div>
+            <div className={`px-4 py-1.5 rounded-full text-xs font-body font-bold text-center ${getStatusColor(selectedOrder.status)}`}>
+              {selectedOrder.status}
+            </div>
+          </div>
+
+          <div className="space-y-4 mb-8">
+            <h4 className="font-display font-bold text-foreground text-sm flex items-center gap-2">
+              <Package className="h-4 w-4 text-accent" /> Itens do Pedido
+            </h4>
+            {loadingItems ? (
+              <div className="animate-pulse space-y-2">
+                <div className="h-10 bg-muted rounded-xl" />
+                <div className="h-10 bg-muted rounded-xl" />
+              </div>
+            ) : (
+              <div className="bg-muted/30 rounded-2xl p-2 divide-y divide-border/50">
+                {orderItems.map((item) => (
+                  <div key={item.id} className="p-3 flex items-center justify-between font-body">
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs font-bold text-accent bg-accent/10 px-2 py-0.5 rounded-lg">{item.quantity}x</span>
+                      <span className="text-sm font-medium text-foreground">{item.product_name}</span>
+                    </div>
+                    <span className="text-sm font-bold text-foreground">{item.total_price.toLocaleString()} Kz</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-3 bg-muted/20 p-5 rounded-2xl border border-border/50">
+            <div className="flex justify-between text-sm font-body text-muted-foreground">
+              <span>Subtotal</span>
+              <span>{selectedOrder.subtotal.toLocaleString()} Kz</span>
+            </div>
+            <div className="flex justify-between text-sm font-body text-muted-foreground">
+              <span>Taxa de Entrega</span>
+              <span>{selectedOrder.delivery_fee.toLocaleString()} Kz</span>
+            </div>
+            <div className="flex justify-between text-lg font-display font-bold text-foreground pt-3 border-t border-border">
+              <span>Total</span>
+              <span>{selectedOrder.total.toLocaleString()} Kz</span>
+            </div>
+          </div>
+
+          <div className="mt-8 pt-6 border-t border-border">
+            <h4 className="font-display font-bold text-foreground text-sm mb-3">Endereço de Entrega</h4>
+            <div className="flex items-start gap-2 text-sm font-body text-muted-foreground">
+              <MapPin className="h-4 w-4 shrink-0 text-blue-500 mt-0.5" />
+              <p>{selectedOrder.delivery_address || "Endereço não especificado"}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const filters = ["all", "active", "delivered", "cancelled"];
   const filterLabels: Record<string, string> = { all: "Todos", active: "Activos", delivered: "Entregues", cancelled: "Cancelados" };
 
   return (
-    <div className="space-y-5">
-      <h2 className="font-display text-2xl font-bold text-foreground">Meus Pedidos</h2>
-      <div className="flex gap-2">
-        {filters.map((f) => (
-          <button key={f} onClick={() => setFilter(f)} className={`px-3 py-1.5 rounded-full text-xs font-body font-medium transition-all ${filter === f ? "bg-accent text-accent-foreground" : "bg-muted text-muted-foreground"}`}>{filterLabels[f]}</button>
-        ))}
+    <div className="space-y-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <h2 className="font-display text-2xl font-bold text-foreground">Meus Pedidos</h2>
+        <Button onClick={onNewOrder} className="rounded-2xl gap-2 font-display bg-accent hover:bg-accent/90 text-accent-foreground shadow-lg shadow-accent/20">
+          <ShoppingBag className="h-4 w-4" /> Fazer Pedido
+        </Button>
       </div>
-      <div className="space-y-3">
-        {orders.map((order) => (
-          <div key={order.id} className="bg-card border border-border rounded-2xl p-4 hover:shadow-md transition-all cursor-pointer">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <span className="font-body font-bold text-foreground text-sm">{order.id}</span>
-                <span className={`text-[10px] font-body font-semibold px-2 py-0.5 rounded-full ${order.statusColor}`}>{order.status}</span>
-              </div>
-              <span className="text-xs text-muted-foreground font-body">{order.date}</span>
-            </div>
-            <p className="font-display font-bold text-foreground text-sm">{order.store}</p>
-            <p className="text-xs text-muted-foreground font-body mt-0.5">{order.items}</p>
-            <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
-              <span className="font-body font-bold text-foreground">{order.total}</span>
-              <Button variant="ghost" size="sm" className="text-accent font-body text-xs h-8">Ver detalhes</Button>
-            </div>
+
+      <div className="space-y-4">
+        <div className="relative">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Pesquisar por loja ou ID..."
+            className="w-full pl-12 pr-4 py-3 rounded-2xl bg-card border border-border text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent font-body shadow-sm"
+          />
+        </div>
+
+        <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+          {filters.map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`px-4 py-2 rounded-full text-xs font-body font-bold whitespace-nowrap transition-all ${filter === f ? "bg-accent text-accent-foreground shadow-md" : "bg-card border border-border text-muted-foreground hover:border-accent/50"}`}
+            >
+              {filterLabels[f]}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        {loading ? (
+          <div className="space-y-4">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="h-32 bg-muted animate-pulse rounded-3xl" />
+            ))}
           </div>
-        ))}
+        ) : filteredOrders.length > 0 ? (
+          filteredOrders.map((order) => (
+            <div
+              key={order.id}
+              onClick={() => handleOpenDetails(order)}
+              className="bg-card border border-border rounded-[2rem] p-5 hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer group relative overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:rotate-12 transition-transform duration-500">
+                <Package className="h-16 w-16" />
+              </div>
+
+              <div className="flex items-center justify-between mb-4 relative z-10">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center overflow-hidden shrink-0">
+                    {order.stores?.logo_url ? (
+                      <img src={order.stores.logo_url} alt={order.stores.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <Store className="h-5 w-5 text-muted-foreground" />
+                    )}
+                  </div>
+                  <div>
+                    <span className="font-display font-bold text-foreground text-sm block group-hover:text-accent transition-colors">{order.stores?.name}</span>
+                    <span className="text-[10px] text-muted-foreground font-body">#{order.id.slice(0, 8)} · {new Date(order.created_at).toLocaleDateString()}</span>
+                  </div>
+                </div>
+                <span className={`text-[10px] font-body font-bold px-3 py-1 rounded-full ${getStatusColor(order.status)}`}>
+                  {order.status}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between mt-4 pt-4 border-t border-border/50 relative z-10">
+                <div className="space-y-0.5">
+                  <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Total</p>
+                  <p className="font-display font-bold text-foreground text-base tracking-tight">{order.total.toLocaleString()} Kz</p>
+                </div>
+                <Button variant="ghost" size="sm" className="text-accent hover:text-accent hover:bg-accent/10 font-bold text-xs h-9 gap-2 rounded-xl group-hover:translate-x-1 transition-all">
+                  Ver detalhes <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="text-center py-16 bg-muted/20 rounded-[2rem] border-2 border-dashed border-border/50">
+            <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mx-auto mb-4">
+              <ShoppingBag className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <p className="text-muted-foreground font-body font-medium mb-4">Ainda não tem pedidos.</p>
+            <Button onClick={onNewOrder} className="rounded-2xl bg-accent text-accent-foreground">Fazer primeiro pedido</Button>
+          </div>
+        )}
       </div>
     </div>
   );
