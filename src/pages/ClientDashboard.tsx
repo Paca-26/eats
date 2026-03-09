@@ -1,14 +1,15 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import DashboardShell from "@/components/DashboardShell";
 import BottomNav, { BottomNavItem } from "@/components/BottomNav";
 import StatCard from "@/components/StatCard";
 import AnimatedTabContent from "@/components/AnimatedTabContent";
-import { ShoppingBag, Heart, MapPin, Clock, Home, Search, User, Bell, UtensilsCrossed, ShoppingCart, Beef, Fish, Star, ChevronRight, Package, CreditCard, HelpCircle, LogOut, Edit, Camera, Phone, Mail } from "lucide-react";
+import { ShoppingBag, Heart, MapPin, Clock, Home, Search, User, Bell, UtensilsCrossed, ShoppingCart, Beef, Fish, Star, ChevronRight, Package, CreditCard, HelpCircle, LogOut, Edit, Camera, Phone, Mail, Sparkles, Zap, Timer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { useDemoAuth } from "@/contexts/DemoAuthContext";
 import { useDisplayUser } from "@/hooks/useDisplayUser";
+import { supabase } from "@/integrations/supabase/client";
 import heroClient from "@/assets/hero-client.jpg";
 
 const navItems: BottomNavItem[] = [
@@ -21,15 +22,33 @@ const navItems: BottomNavItem[] = [
 
 const ClientDashboard = () => {
   const [activeTab, setActiveTab] = useState("home");
+  const [profile, setProfile] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data } = await supabase
+          .from("profiles")
+          .select("*, zones(name)")
+          .eq("id", user.id)
+          .maybeSingle();
+        setProfile(data);
+      }
+      setLoading(false);
+    };
+    fetchProfile();
+  }, []);
 
   const renderContent = () => {
     switch (activeTab) {
-      case "home": return <ClientHome />;
+      case "home": return <ClientHome profile={profile} />;
       case "explore": return <ClientExplore />;
       case "orders": return <ClientOrders />;
       case "alerts": return <ClientAlerts />;
-      case "profile": return <ClientProfile />;
-      default: return <ClientHome />;
+      case "profile": return <ClientProfile profile={profile} />;
+      default: return <ClientHome profile={profile} />;
     }
   };
 
@@ -47,86 +66,141 @@ const ClientDashboard = () => {
   );
 };
 
-const ClientHome = () => {
-  const { name } = useDisplayUser();
+const ClientHome = ({ profile }: { profile: any }) => {
+  const { name, initials } = useDisplayUser();
+
   return (
-  <div className="space-y-6">
-    <div className="relative rounded-2xl overflow-hidden h-44">
-      <img src={heroClient} alt="Comida" className="absolute inset-0 w-full h-full object-cover" />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/10" />
-      <div className="relative z-10 p-6 h-full flex flex-col justify-end text-white">
-        <p className="text-white/80 font-body text-sm">Bom dia 👋</p>
-        <h1 className="font-display text-2xl font-bold mt-1">{name}</h1>
-        <div className="flex items-center gap-3 mt-1.5">
-          <span className="bg-white/20 backdrop-blur-sm text-white text-xs font-body px-2.5 py-0.5 rounded-full flex items-center gap-1"><MapPin className="h-3 w-3" /> Talatona</span>
-          <span className="bg-emerald-500/80 backdrop-blur-sm text-white text-xs font-body px-2.5 py-0.5 rounded-full flex items-center gap-1"><Star className="h-3 w-3" /> 150 pts</span>
+    <div className="space-y-7">
+      <div className="bg-card border border-border rounded-3xl p-6 shadow-sm overflow-hidden relative group transition-all duration-300 hover:shadow-md active:scale-[0.99]">
+        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+          <Sparkles className="h-20 w-20 text-accent rotate-12" />
+        </div>
+        <div className="flex items-start gap-5 relative z-10">
+          <div className="relative shrink-0">
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 border-4 border-white dark:border-zinc-900 shadow-xl flex items-center justify-center text-white text-2xl font-display font-bold overflow-hidden ring-4 ring-blue-500/20">
+              {profile?.avatar_url ? (
+                <img src={profile.avatar_url} alt={name} className="w-full h-full object-cover" />
+              ) : (
+                <span>{initials}</span>
+              )}
+            </div>
+            <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-emerald-500 border-2 border-white dark:border-zinc-900 rounded-full shadow-sm flex items-center justify-center" title="Online">
+              <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+            </div>
+          </div>
+
+          <div className="flex-1 space-y-1">
+            <p className="text-muted-foreground font-body text-xs font-medium uppercase tracking-widest flex items-center gap-1.5 ring-offset-2 ring-1 ring-emerald-500/20 w-fit px-2 py-0.5 rounded-full mb-1 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400">
+              <Timer className="h-3 w-3" /> Bom dia
+            </p>
+            <h1 className="font-display text-2xl font-bold text-foreground leading-tight tracking-tight">{profile?.full_name || name}</h1>
+            <div className="flex flex-col gap-1.5 pt-1">
+              <div className="flex items-center gap-2 text-muted-foreground font-body text-xs">
+                <div className="p-1 rounded-md bg-muted/50 text-muted-foreground shrink-0"><Phone className="h-3 w-3" /></div>
+                <span>{profile?.phone || "Telemóvel não definido"}</span>
+              </div>
+              <div className="flex items-center gap-2 text-muted-foreground font-body text-xs">
+                <div className="p-1 rounded-md bg-muted/50 text-muted-foreground shrink-0"><MapPin className="h-3 w-3" /></div>
+                <span>{profile?.zones?.name || "Luanda, Angola"}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <StatCard label="Encomendas" value="3" icon={ShoppingBag} />
+        <StatCard label="Favoritos" value="7" icon={Heart} />
+        <StatCard label="Endereços" value="2" icon={MapPin} />
+        <StatCard label="Última Compra" value="Hoje" icon={Clock} />
+      </div>
+
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-display text-xl font-bold text-foreground flex items-center gap-2">
+            <Zap className="h-5 w-5 text-amber-500 fill-amber-500" /> Categorias
+          </h2>
+          <span className="text-xs font-body font-medium text-muted-foreground bg-muted p-1 px-2 rounded-lg">Ver todas</span>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          {[
+            { name: "Supermercados", icon: ShoppingCart, slug: "supermercados", color: "from-emerald-500/10 to-emerald-500/5", iconColor: "text-emerald-500", shadow: "shadow-emerald-500/10" },
+            { name: "Restaurantes", icon: UtensilsCrossed, slug: "restaurantes", color: "from-orange-500/10 to-orange-500/5", iconColor: "text-orange-500", shadow: "shadow-orange-500/10" },
+            { name: "Talhos", icon: Beef, slug: "talhos", color: "from-rose-500/10 to-rose-500/5", iconColor: "text-rose-500", shadow: "shadow-rose-500/10" },
+            { name: "Peixarias", icon: Fish, slug: "peixarias", color: "from-sky-500/10 to-sky-500/5", iconColor: "text-sky-500", shadow: "shadow-sky-500/10" },
+          ].map((cat) => {
+            const Icon = cat.icon;
+            return (
+              <Link key={cat.slug} to={`/categoria/${cat.slug}`} className="block group">
+                <div className={`bg-gradient-to-br ${cat.color} border border-border/50 rounded-3xl p-5 transition-all duration-300 group-hover:shadow-xl group-hover:scale-[1.02] active:scale-[0.98] relative overflow-hidden`}>
+                  <div className={`absolute -right-2 -bottom-2 opacity-5 scale-150 rotate-12 transition-transform duration-500 group-hover:rotate-0 group-hover:scale-125 ${cat.iconColor}`}>
+                    <Icon className="h-16 w-16" />
+                  </div>
+                  <div className={`w-12 h-12 rounded-2xl bg-white dark:bg-zinc-800 shadow-sm flex items-center justify-center mb-4 transition-transform duration-300 group-hover:-translate-y-1 ${cat.shadow}`}>
+                    <Icon className={`h-6 w-6 ${cat.iconColor}`} />
+                  </div>
+                  <span className="font-display font-bold text-foreground text-base">{cat.name}</span>
+                  <p className="text-[10px] text-muted-foreground font-body mt-1 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    Explorar agora <ChevronRight className="h-3 w-3" />
+                  </p>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="bg-card border border-border rounded-3xl overflow-hidden shadow-sm transition-all duration-300 hover:shadow-md">
+        <div className="p-5 border-b border-border flex items-center justify-between bg-muted/30">
+          <h2 className="font-display text-lg font-bold text-foreground flex items-center gap-2">
+            <Clock className="h-5 w-5 text-blue-500" /> Pedidos Recentes
+          </h2>
+          <Button variant="ghost" size="sm" className="text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 font-body font-bold rounded-xl h-8">Ver Histórico</Button>
+        </div>
+        <div className="divide-y divide-border/50">
+          {[
+            { store: "MMM' All4You", items: "2x Frango Grelhado, 1x Sumo", status: "Em preparação", statusColor: "bg-amber-500/10 text-amber-600 dark:text-amber-400", price: "4.500 Kz", icon: UtensilsCrossed },
+            { store: "Super Luanda", items: "Arroz, Óleo, Feijão", status: "Entregue", statusColor: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400", price: "8.200 Kz", icon: ShoppingBag },
+            { store: "Peixaria Atlântico", items: "1kg Camarão, 2kg Peixe", status: "A caminho", statusColor: "bg-blue-500/10 text-blue-600 dark:text-blue-400", price: "12.000 Kz", icon: Fish },
+          ].map((order, i) => {
+            const Icon = order.icon;
+            return (
+              <div key={i} className="p-4 hover:bg-muted/50 transition-all cursor-pointer group flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-muted flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform">
+                  <Icon className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between mb-0.5">
+                    <span className="font-display font-bold text-foreground text-sm group-hover:text-blue-600 transition-colors">{order.store}</span>
+                    <span className={`text-[10px] font-body font-bold px-2.5 py-1 rounded-full ${order.statusColor}`}>{order.status}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground font-body truncate">{order.items}</p>
+                  <p className="text-sm font-body font-bold text-foreground mt-1.5">{order.price}</p>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-all translate-x-2 group-hover:translate-x-0" />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="bg-gradient-to-br from-amber-500 to-orange-600 text-white rounded-3xl p-6 flex items-center gap-4 shadow-lg shadow-amber-500/20 relative overflow-hidden group">
+        <div className="absolute top-0 right-0 p-4 opacity-20 group-hover:scale-110 transition-transform duration-700">
+          <Star className="h-20 w-20 fill-white" />
+        </div>
+        <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shrink-0 shadow-inner">
+          <Star className="h-6 w-6 text-white fill-white" />
+        </div>
+        <div className="flex-1 relative z-10">
+          <p className="font-display font-bold text-lg">Pronto para poupar?</p>
+          <p className="text-xs text-white/80 font-body">Acumulou 150 pontos para a próxima refeição.</p>
+        </div>
+        <div className="text-right relative z-10">
+          <span className="font-display font-bold text-3xl">150</span>
+          <p className="text-[10px] uppercase font-bold tracking-tighter opacity-80">pts</p>
         </div>
       </div>
     </div>
-
-    <div className="grid grid-cols-2 gap-3">
-      <StatCard label="Encomendas" value="3" icon={ShoppingBag} />
-      <StatCard label="Favoritos" value="7" icon={Heart} />
-      <StatCard label="Endereços" value="2" icon={MapPin} />
-      <StatCard label="Última Compra" value="Hoje" icon={Clock} />
-    </div>
-
-    <div>
-      <h2 className="font-display text-lg font-bold text-foreground mb-3">Categorias</h2>
-      <div className="grid grid-cols-2 gap-3">
-        {[
-          { name: "Supermercados", icon: ShoppingCart, slug: "supermercados", color: "from-emerald-400 to-emerald-600" },
-          { name: "Restaurantes", icon: UtensilsCrossed, slug: "restaurantes", color: "from-orange-400 to-red-500" },
-          { name: "Talhos", icon: Beef, slug: "talhos", color: "from-red-400 to-rose-600" },
-          { name: "Peixarias", icon: Fish, slug: "peixarias", color: "from-cyan-400 to-blue-500" },
-        ].map((cat) => {
-          const Icon = cat.icon;
-          return (
-            <Link key={cat.slug} to={`/categoria/${cat.slug}`} className="block">
-              <div className="bg-card border border-border rounded-2xl p-4 hover:shadow-lg transition-all duration-300 hover:scale-[1.03] active:scale-[0.97] group">
-                <span className={`inline-flex items-center justify-center w-11 h-11 rounded-xl bg-gradient-to-br ${cat.color} mb-3 shadow-sm group-hover:scale-110 transition-transform duration-300`}>
-                  <Icon className="h-5 w-5 text-white" />
-                </span>
-                <span className="font-display font-bold text-foreground text-sm block">{cat.name}</span>
-              </div>
-            </Link>
-          );
-        })}
-      </div>
-    </div>
-
-    <div className="bg-card border border-border rounded-2xl overflow-hidden">
-      <div className="p-4 border-b border-border flex items-center justify-between">
-        <h2 className="font-display text-lg font-bold text-foreground">Encomendas Recentes</h2>
-        <span className="text-xs text-accent font-body font-semibold cursor-pointer">Ver todas</span>
-      </div>
-      <div className="divide-y divide-border">
-        {[
-          { store: "MMM' All4You", items: "2x Frango Grelhado, 1x Sumo", status: "Em preparação", statusColor: "bg-amber-100 text-amber-700", price: "4.500 Kz" },
-          { store: "Super Luanda", items: "Arroz, Óleo, Feijão", status: "Entregue", statusColor: "bg-emerald-100 text-emerald-700", price: "8.200 Kz" },
-          { store: "Peixaria Atlântico", items: "1kg Camarão, 2kg Peixe", status: "A caminho", statusColor: "bg-blue-100 text-blue-700", price: "12.000 Kz" },
-        ].map((order, i) => (
-          <div key={i} className="p-4 hover:bg-muted/50 transition-colors cursor-pointer group">
-            <div className="flex items-center justify-between mb-1">
-              <span className="font-display font-bold text-foreground text-sm">{order.store}</span>
-              <span className={`text-[10px] font-body font-semibold px-2 py-0.5 rounded-full ${order.statusColor}`}>{order.status}</span>
-            </div>
-            <p className="text-xs text-muted-foreground font-body">{order.items}</p>
-            <p className="text-sm font-body font-semibold text-foreground mt-1">{order.price}</p>
-          </div>
-        ))}
-      </div>
-    </div>
-
-    <div className="bg-gradient-to-r from-accent/10 to-accent/5 border border-accent/20 rounded-2xl p-4 flex items-center gap-3">
-      <Star className="h-6 w-6 text-accent shrink-0" />
-      <div className="flex-1">
-        <p className="font-display font-bold text-foreground text-sm">Ganhe pontos!</p>
-        <p className="text-xs text-muted-foreground font-body">Cada compra acumula pontos para descontos.</p>
-      </div>
-      <span className="text-accent font-display font-bold text-lg">150</span>
-    </div>
-  </div>
   );
 };
 
@@ -269,47 +343,66 @@ const LogoutButton = () => {
   );
 };
 
-const ClientProfile = () => {
+const ClientProfile = ({ profile }: { profile: any }) => {
   const { name, email, initials } = useDisplayUser();
+  const displayName = profile?.full_name || name;
+  const displayEmail = email;
+
   return (
-  <div className="space-y-5">
-    <h2 className="font-display text-2xl font-bold text-foreground">Meu Perfil</h2>
-    <div className="bg-card border border-border rounded-2xl p-6 flex flex-col items-center text-center">
-      <div className="relative mb-4">
-        <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center text-white text-2xl font-display font-bold">{initials}</div>
-        <button className="absolute -bottom-1 -right-1 p-1.5 rounded-full bg-accent text-accent-foreground shadow-sm"><Camera className="h-3.5 w-3.5" /></button>
-      </div>
-      <h3 className="font-display font-bold text-foreground text-lg">{name}</h3>
-      <p className="text-sm text-muted-foreground font-body">{email}</p>
-      <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground font-body">
-        <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> Talatona</span>
-        <span className="flex items-center gap-1"><Phone className="h-3 w-3" /> +244 923 456 789</span>
-      </div>
-    </div>
-    <div className="bg-card border border-border rounded-2xl overflow-hidden divide-y divide-border">
-      {[
-        { icon: Edit, label: "Editar Perfil", desc: "Nome, email, telefone" },
-        { icon: MapPin, label: "Endereços", desc: "2 endereços guardados" },
-        { icon: CreditCard, label: "Pagamentos", desc: "Multicaixa Express" },
-        { icon: Bell, label: "Notificações", desc: "Configurar alertas" },
-        { icon: Star, label: "Programa de Pontos", desc: "150 pontos acumulados" },
-        { icon: HelpCircle, label: "Ajuda & Suporte", desc: "FAQ, contacto" },
-      ].map((item, i) => {
-        const Icon = item.icon;
-        return (
-          <button key={i} className="w-full flex items-center gap-4 p-4 hover:bg-muted/50 transition-colors text-left">
-            <div className="p-2 rounded-xl bg-muted"><Icon className="h-4 w-4 text-foreground" /></div>
-            <div className="flex-1">
-              <span className="font-body font-semibold text-foreground text-sm block">{item.label}</span>
-              <span className="text-xs text-muted-foreground font-body">{item.desc}</span>
-            </div>
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+    <div className="space-y-6">
+      <h2 className="font-display text-2xl font-bold text-foreground">Meu Perfil</h2>
+      <div className="bg-card border border-border rounded-3xl p-8 flex flex-col items-center text-center shadow-sm relative overflow-hidden group">
+        <div className="absolute top-0 left-0 w-full h-24 bg-gradient-to-r from-blue-500/10 to-indigo-500/10" />
+        <div className="relative mb-5 z-10 pt-2">
+          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 border-4 border-white dark:border-zinc-800 shadow-xl flex items-center justify-center text-white text-3xl font-display font-bold overflow-hidden">
+            {profile?.avatar_url ? (
+              <img src={profile.avatar_url} alt={displayName} className="w-full h-full object-cover" />
+            ) : (
+              <span>{initials}</span>
+            )}
+          </div>
+          <button className="absolute bottom-0 right-0 p-2 rounded-xl bg-accent text-accent-foreground shadow-lg hover:scale-110 active:scale-90 transition-transform group-hover:rotate-12">
+            <Camera className="h-4 w-4" />
           </button>
-        );
-      })}
+        </div>
+        <div className="relative z-10 w-full">
+          <h3 className="font-display font-bold text-foreground text-xl leading-tight">{displayName}</h3>
+          <p className="text-sm text-muted-foreground font-body mt-1">{displayEmail}</p>
+
+          <div className="flex flex-wrap items-center justify-center gap-3 mt-6">
+            <div className="flex items-center gap-2 bg-muted/50 px-3 py-1.5 rounded-2xl border border-border/50 text-xs text-muted-foreground font-body">
+              <MapPin className="h-3.5 w-3.5 text-blue-500" /> {profile?.zones?.name || "Luanda"}
+            </div>
+            <div className="flex items-center gap-2 bg-muted/50 px-3 py-1.5 rounded-2xl border border-border/50 text-xs text-muted-foreground font-body">
+              <Phone className="h-3.5 w-3.5 text-emerald-500" /> {profile?.phone || "Não definido"}
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="bg-card border border-border rounded-2xl overflow-hidden divide-y divide-border">
+        {[
+          { icon: Edit, label: "Editar Perfil", desc: "Nome, email, telefone" },
+          { icon: MapPin, label: "Endereços", desc: "2 endereços guardados" },
+          { icon: CreditCard, label: "Pagamentos", desc: "Multicaixa Express" },
+          { icon: Bell, label: "Notificações", desc: "Configurar alertas" },
+          { icon: Star, label: "Programa de Pontos", desc: "150 pontos acumulados" },
+          { icon: HelpCircle, label: "Ajuda & Suporte", desc: "FAQ, contacto" },
+        ].map((item, i) => {
+          const Icon = item.icon;
+          return (
+            <button key={i} className="w-full flex items-center gap-4 p-4 hover:bg-muted/50 transition-colors text-left">
+              <div className="p-2 rounded-xl bg-muted"><Icon className="h-4 w-4 text-foreground" /></div>
+              <div className="flex-1">
+                <span className="font-body font-semibold text-foreground text-sm block">{item.label}</span>
+                <span className="text-xs text-muted-foreground font-body">{item.desc}</span>
+              </div>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </button>
+          );
+        })}
+      </div>
+      <LogoutButton />
     </div>
-    <LogoutButton />
-  </div>
   );
 };
 
