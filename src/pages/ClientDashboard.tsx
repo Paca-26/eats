@@ -4,7 +4,7 @@ import DashboardShell from "@/components/DashboardShell";
 import BottomNav, { BottomNavItem } from "@/components/BottomNav";
 import StatCard from "@/components/StatCard";
 import AnimatedTabContent from "@/components/AnimatedTabContent";
-import { ShoppingBag, Heart, MapPin, Clock, Home, Search, User, Bell, UtensilsCrossed, ShoppingCart, Beef, Fish, Star, ChevronRight, Package, CreditCard, HelpCircle, LogOut, Edit, Camera, Phone, Mail, Zap, Timer } from "lucide-react";
+import { ShoppingBag, Heart, MapPin, Clock, Home, Search, User, Bell, UtensilsCrossed, ShoppingCart, Beef, Fish, Star, ChevronRight, Package, CreditCard, HelpCircle, LogOut, Edit, Camera, Phone, Mail, Zap, Timer, Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -121,11 +121,8 @@ const ClientHome = ({ profile }: { profile: any }) => {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        <StatCard label="Encomendas" value="3" icon={ShoppingBag} />
-        <StatCard label="Favoritos" value="7" icon={Heart} />
-        <StatCard label="Endereços" value="2" icon={MapPin} />
-        <StatCard label="Última Compra" value="Hoje" icon={Clock} />
+      <div className="hidden lg:grid grid-cols-2 gap-3">
+        {/* Statistics cards hidden on mobile as per user request to remove them, but kept hidden in code for potential desktop use or future reference */}
       </div>
 
       <div>
@@ -197,70 +194,120 @@ const ClientHome = ({ profile }: { profile: any }) => {
         </div>
       </div>
 
-      <div className="bg-gradient-to-br from-amber-500 to-orange-600 text-white rounded-3xl p-6 flex items-center gap-4 shadow-lg shadow-amber-500/20 relative overflow-hidden group">
-        <div className="absolute top-0 right-0 p-4 opacity-20 group-hover:scale-110 transition-transform duration-700">
-          <Star className="h-20 w-20 fill-white" />
-        </div>
-        <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shrink-0 shadow-inner">
-          <Star className="h-6 w-6 text-white fill-white" />
-        </div>
-        <div className="flex-1 relative z-10">
-          <p className="font-display font-bold text-lg">Pronto para poupar?</p>
-          <p className="text-xs text-white/80 font-body">Acumulou 150 pontos para a próxima refeição.</p>
-        </div>
-        <div className="text-right relative z-10">
-          <span className="font-display font-bold text-3xl">150</span>
-          <p className="text-[10px] uppercase font-bold tracking-tighter opacity-80">pts</p>
-        </div>
-      </div>
+      {/* Points card removed as per user request */}
     </div>
+    </div >
   );
 };
 
 const ClientExplore = () => {
   const [searchQuery, setSearchQuery] = useState("");
-  const categories = ["Tudo", "Restaurantes", "Supermercados", "Talhos", "Peixarias", "Mercearias"];
+  const [stores, setStores] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
   const [activeCategory, setActiveCategory] = useState("Tudo");
+  const [loading, setLoading] = useState(true);
 
-  const popularStores = [
-    { name: "MMM' All4You", category: "Restaurante", rating: 4.8, deliveryTime: "25-35 min", image: "🍽️" },
-    { name: "Super Luanda", category: "Supermercado", rating: 4.6, deliveryTime: "30-45 min", image: "🛒" },
-    { name: "Talho Premium", category: "Talho", rating: 4.9, deliveryTime: "20-30 min", image: "🥩" },
-    { name: "Peixaria Atlântico", category: "Peixaria", rating: 4.7, deliveryTime: "25-40 min", image: "🐟" },
-    { name: "Mercearia da Avó", category: "Mercearia", rating: 4.5, deliveryTime: "15-25 min", image: "🏪" },
-    { name: "Grelha de Ouro", category: "Restaurante", rating: 4.8, deliveryTime: "30-40 min", image: "🔥" },
-  ];
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const { data: storesData } = await supabase
+          .from("stores")
+          .select("*, categories(name)")
+          .eq("is_active", true);
+
+        const { data: categoriesData } = await supabase
+          .from("categories")
+          .select("*")
+          .order("sort_order");
+
+        if (storesData) setStores(storesData);
+        if (categoriesData) setCategories(categoriesData);
+      } catch (error) {
+        console.error("Erro ao procurar dados:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  const filteredStores = stores.filter(store => {
+    const matchesSearch = store.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = activeCategory === "Tudo" || store.categories?.name === activeCategory;
+    return matchesSearch && matchesCategory;
+  });
 
   return (
     <div className="space-y-5">
       <h2 className="font-display text-2xl font-bold text-foreground">Explorar</h2>
       <div className="relative">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-        <input type="text" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} placeholder="Pesquisar lojas, produtos..." className="w-full pl-12 pr-4 py-3.5 rounded-2xl bg-card border border-border text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent font-body shadow-sm" />
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder="Pesquisar lojas, produtos..."
+          className="w-full pl-12 pr-4 py-3.5 rounded-2xl bg-card border border-border text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent font-body shadow-sm"
+        />
       </div>
+
       <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+        <button
+          onClick={() => setActiveCategory("Tudo")}
+          className={`px-4 py-2 rounded-full text-sm font-body font-medium whitespace-nowrap transition-all duration-200 ${activeCategory === "Tudo" ? "bg-accent text-accent-foreground shadow-sm" : "bg-card border border-border text-muted-foreground hover:text-foreground"}`}
+        >
+          Tudo
+        </button>
         {categories.map((cat) => (
-          <button key={cat} onClick={() => setActiveCategory(cat)} className={`px-4 py-2 rounded-full text-sm font-body font-medium whitespace-nowrap transition-all duration-200 ${activeCategory === cat ? "bg-accent text-accent-foreground shadow-sm" : "bg-card border border-border text-muted-foreground hover:text-foreground"}`}>{cat}</button>
+          <button
+            key={cat.id}
+            onClick={() => setActiveCategory(cat.name)}
+            className={`px-4 py-2 rounded-full text-sm font-body font-medium whitespace-nowrap transition-all duration-200 ${activeCategory === cat.name ? "bg-accent text-accent-foreground shadow-sm" : "bg-card border border-border text-muted-foreground hover:text-foreground"}`}
+          >
+            {cat.name}
+          </button>
         ))}
       </div>
-      <div className="space-y-3">
-        {popularStores.map((store, i) => (
-          <div key={i} className="bg-card border border-border rounded-2xl p-4 hover:shadow-md transition-all duration-200 cursor-pointer group flex items-center gap-4">
-            <span className="text-3xl w-12 h-12 flex items-center justify-center bg-muted rounded-xl">{store.image}</span>
-            <div className="flex-1 min-w-0">
-              <span className="font-display font-bold text-foreground block">{store.name}</span>
-              <span className="text-xs text-muted-foreground font-body">{store.category} · {store.deliveryTime}</span>
+
+      {loading ? (
+        <div className="space-y-3 pt-4">
+          {[1, 2, 3].map(i => (
+            <div key={i} className="h-24 w-full bg-muted animate-pulse rounded-2xl" />
+          ))}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filteredStores.length > 0 ? (
+            filteredStores.map((store) => (
+              <Link key={store.id} to={`/loja/${store.id}`} className="bg-card border border-border rounded-2xl p-4 hover:shadow-md transition-all duration-200 cursor-pointer group flex items-center gap-4">
+                <div className="w-12 h-12 flex items-center justify-center bg-muted rounded-xl overflow-hidden shrink-0">
+                  {store.logo_url ? (
+                    <img src={store.logo_url} alt={store.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <Store className="h-6 w-6 text-muted-foreground" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <span className="font-display font-bold text-foreground block truncate">{store.name}</span>
+                  <span className="text-xs text-muted-foreground font-body">{store.categories?.name || "Loja"} · {store.opening_time || "Aberto"}</span>
+                </div>
+                <div className="text-right shrink-0">
+                  <div className="flex items-center gap-1 text-accent">
+                    <Star className="h-3.5 w-3.5 fill-accent" />
+                    <span className="text-sm font-body font-bold">{store.average_rating || "N/A"}</span>
+                  </div>
+                </div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-accent group-hover:translate-x-1 transition-all" />
+              </Link>
+            ))
+          ) : (
+            <div className="text-center py-12">
+              <p className="text-muted-foreground font-body">Nenhuma loja encontrada.</p>
             </div>
-            <div className="text-right shrink-0">
-              <div className="flex items-center gap-1 text-accent">
-                <Star className="h-3.5 w-3.5 fill-accent" />
-                <span className="text-sm font-body font-bold">{store.rating}</span>
-              </div>
-            </div>
-            <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-accent group-hover:translate-x-1 transition-all" />
-          </div>
-        ))}
-      </div>
+          )}
+        </div>
+      )}
     </div>
   );
 };
