@@ -4,7 +4,7 @@ import DashboardShell from "@/components/DashboardShell";
 import BottomNav, { BottomNavItem } from "@/components/BottomNav";
 import StatCard from "@/components/StatCard";
 import AnimatedTabContent from "@/components/AnimatedTabContent";
-import { Package, ShoppingCart, Star, TrendingUp, Plus, BarChart3, Settings, MessageSquare, Grid3X3, Store, Eye, Clock, Edit, Trash2, MapPin, Phone, Mail, Save, LogOut, ToggleLeft, ToggleRight, Loader2, UserPlus } from "lucide-react";
+import { Package, ShoppingCart, Star, TrendingUp, Plus, BarChart3, Settings, MessageSquare, Grid3X3, Store, Eye, Clock, Edit, Trash2, MapPin, Phone, Mail, Save, LogOut, ToggleLeft, ToggleRight, Loader2, UserPlus, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import AddProductDialog, { type Product } from "@/components/vendor/AddProductDialog";
 import StoreSetupDialog from "@/components/vendor/StoreSetupDialog";
@@ -227,6 +227,7 @@ const VendorProducts = ({ storeId, onUpdate, isAddProductOpen, setIsAddProductOp
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editIndex, setEditIndex] = useState<number | null>(null);
   const [activeFilter, setActiveFilter] = useState("Todos");
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     fetchProducts();
@@ -251,7 +252,7 @@ const VendorProducts = ({ storeId, onUpdate, isAddProductOpen, setIsAddProductOp
       setProducts(data.map(p => ({
         name: p.name,
         price: `${Number(p.price).toLocaleString("pt-AO")} Kz`,
-        category: "Pratos",
+        category: p.category || "Geral",
         stock: p.stock_quantity || 0,
         active: p.is_available,
         description: p.description || "",
@@ -262,7 +263,13 @@ const VendorProducts = ({ storeId, onUpdate, isAddProductOpen, setIsAddProductOp
   };
 
   const allCategories = ["Todos", ...Array.from(new Set(products.map((p) => p.category)))];
-  const filtered = activeFilter === "Todos" ? products : products.filter((p) => p.category === activeFilter);
+
+  const filtered = products.filter((p) => {
+    const matchesFilter = activeFilter === "Todos" || p.category === activeFilter;
+    const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.description?.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesFilter && matchesSearch;
+  });
 
   const handleAdd = async (product: Product) => {
     const priceNum = Number(product.price.replace(/[^\d]/g, ""));
@@ -283,6 +290,7 @@ const VendorProducts = ({ storeId, onUpdate, isAddProductOpen, setIsAddProductOp
           .update({
             name: product.name,
             price: priceNum,
+            category: product.category,
             stock_quantity: product.stock,
             is_available: product.active,
             description: product.description || null,
@@ -302,6 +310,7 @@ const VendorProducts = ({ storeId, onUpdate, isAddProductOpen, setIsAddProductOp
       const { error } = await supabase.from("products").insert({
         name: product.name,
         price: priceNum,
+        category: product.category,
         store_id: storeId,
         stock_quantity: product.stock,
         is_available: product.active,
@@ -389,9 +398,28 @@ const VendorProducts = ({ storeId, onUpdate, isAddProductOpen, setIsAddProductOp
           <Plus className="h-4 w-4" /> Novo
         </Button>
       </div>
-      <div className="flex gap-2 overflow-x-auto pb-1">
+
+      <div className="relative group">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-amber-500 transition-colors" />
+        <Input
+          placeholder="Pesquisar produtos..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-10 h-11 rounded-xl font-body border-border/50 bg-card shadow-sm focus-visible:ring-amber-500"
+        />
+        {searchQuery && (
+          <button
+            onClick={() => setSearchQuery("")}
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full hover:bg-muted text-muted-foreground"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        )}
+      </div>
+
+      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
         {allCategories.map((cat) => (
-          <button key={cat} onClick={() => setActiveFilter(cat)} className={`px-3 py-1.5 rounded-full text-xs font-body font-medium whitespace-nowrap transition-all ${activeFilter === cat ? "bg-accent text-accent-foreground" : "bg-muted text-muted-foreground"}`}>{cat}</button>
+          <button key={cat} onClick={() => setActiveFilter(cat)} className={`px-3 py-1.5 rounded-full text-xs font-body font-medium whitespace-nowrap transition-all border ${activeFilter === cat ? "bg-amber-500 text-white border-amber-500 shadow-sm" : "bg-card text-muted-foreground border-border hover:border-amber-500/50"}`}>{cat}</button>
         ))}
       </div>
       {filtered.length === 0 ? (
