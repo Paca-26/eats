@@ -250,9 +250,10 @@ const VendorProducts = ({ storeId, onUpdate, isAddProductOpen, setIsAddProductOp
 
     if (data) {
       setProducts(data.map(p => ({
+        id: p.id,
         name: p.name,
         price: `${Number(p.price).toLocaleString("pt-AO")} Kz`,
-        category: "Geral",
+        category: p.category || "Geral",
         stock: p.stock_quantity || 0,
         active: p.is_available,
         description: p.description || "",
@@ -275,16 +276,7 @@ const VendorProducts = ({ storeId, onUpdate, isAddProductOpen, setIsAddProductOp
     const priceNum = Number(product.price.replace(/[^\d]/g, ""));
 
     if (editIndex !== null) {
-      const productToUpdate = products[editIndex];
-      // Find the ID of the product being edited
-      const { data: existingProducts } = await supabase
-        .from("products")
-        .select("id")
-        .eq("store_id", storeId)
-        .eq("name", productToUpdate.name)
-        .maybeSingle();
-
-      if (existingProducts?.id) {
+      if (product.id) {
         const { error } = await supabase
           .from("products")
           .update({
@@ -296,10 +288,11 @@ const VendorProducts = ({ storeId, onUpdate, isAddProductOpen, setIsAddProductOp
             description: product.description || null,
             image_url: product.image_url || null,
           })
-          .eq("id", existingProducts.id);
+          .eq("id", product.id);
 
         if (error) {
-          toast.error("Erro ao atualizar produto");
+          console.error("Erro Supabase:", error);
+          toast.error(`Erro ao atualizar: ${error.message}`);
           return;
         }
         toast.success("Produto atualizado");
@@ -319,7 +312,8 @@ const VendorProducts = ({ storeId, onUpdate, isAddProductOpen, setIsAddProductOp
       });
 
       if (error) {
-        toast.error("Erro ao adicionar produto");
+        console.error("Erro Supabase:", error);
+        toast.error(`Erro ao adicionar: ${error.message}`);
         return;
       }
       toast.success("Produto adicionado");

@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import ImageUpload from "./ImageUpload";
 
 export interface Product {
+  id?: string;
   name: string;
   price: string;
   category: string;
@@ -99,6 +100,7 @@ const AddProductDialog = ({ open, onOpenChange, onAdd, editProduct, storeId }: A
     }
 
     onAdd({
+      id: editProduct?.id,
       name: name.trim(),
       price: formattedPrice,
       category: finalCategory,
