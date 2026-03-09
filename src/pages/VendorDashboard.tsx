@@ -54,6 +54,8 @@ const VendorDashboard = () => {
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
+    let subscription: any;
+
     const fetchStore = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -83,7 +85,7 @@ const VendorDashboard = () => {
         setUnreadCount(unreadRes.count || 0);
 
         // Subscribe to new orders
-        const subscription = supabase
+        subscription = supabase
           .channel(`store-orders-${data.id}`)
           .on('postgres_changes', {
             event: '*',
@@ -94,15 +96,18 @@ const VendorDashboard = () => {
             refreshStore();
           })
           .subscribe();
-
-        return () => {
-          supabase.removeChannel(subscription);
-        };
       }
 
       setLoading(false);
     };
+
     fetchStore();
+
+    return () => {
+      if (subscription) {
+        supabase.removeChannel(subscription);
+      }
+    };
   }, []);
 
   const refreshStore = async () => {
@@ -131,6 +136,10 @@ const VendorDashboard = () => {
     }
   };
 
+  const navItems = initialNavItems.map(item =>
+    item.id === "orders" ? { ...item, badgeCount: unreadCount } : item
+  );
+
   if (loading) {
     return (
       <DashboardShell title="Painel Vendedor" bottomNav={<BottomNav items={navItems} activeId="home" onNavigate={() => { }} />}>
@@ -157,10 +166,6 @@ const VendorDashboard = () => {
       </DashboardShell>
     );
   }
-
-  const navItems = initialNavItems.map(item =>
-    item.id === "orders" ? { ...item, badgeCount: unreadCount } : item
-  );
 
   const renderContent = () => {
     switch (activeTab) {
@@ -227,7 +232,7 @@ const VendorHome = ({ store, stats, unreadCount, onNavigate, onAddProduct }: { s
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard label="Produtos" value={String(stats.productsCount)} icon={Package} />
-        <StatCard label="Encomendas" value={String(stats.ordersCount)} icon={ShoppingCart} badge={unreadCount > 0 ? `${unreadCount} novas` : undefined} />
+        <StatCard label="Encomendas" value={String(stats.ordersCount)} icon={ShoppingCart} trend={unreadCount > 0 ? `${unreadCount} novas` : undefined} trendUp={true} />
         <StatCard label="Avaliação" value={String(store.average_rating || 0)} icon={Star} />
         <StatCard label="Receita" value={`${stats.revenue.toLocaleString("pt-AO")} Kz`} icon={TrendingUp} />
       </div>
