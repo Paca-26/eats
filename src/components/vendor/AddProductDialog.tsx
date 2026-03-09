@@ -24,12 +24,18 @@ interface AddProductDialogProps {
   storeId?: string;
 }
 
-const categories = ["Pratos", "Bebidas", "Entradas", "Sobremesas", "Acompanhamentos"];
+const defaultCategories = [
+  "Pratos", "Bebidas", "Entradas", "Sobremesas", "Acompanhamentos",
+  "Frescos", "Frutas & Vegetais", "Charcutaria", "Talho", "Peixaria",
+  "Padaria", "Lacticínios", "Congelados", "Mercearia", "Higiene", "Limpeza"
+];
 
 const AddProductDialog = ({ open, onOpenChange, onAdd, editProduct, storeId }: AddProductDialogProps) => {
   const [name, setName] = useState(editProduct?.name || "");
   const [price, setPrice] = useState(editProduct?.price?.replace(/[^\d]/g, "") || "");
   const [category, setCategory] = useState(editProduct?.category || "Pratos");
+  const [customCategory, setCustomCategory] = useState("");
+  const [isCustom, setIsCustom] = useState(false);
   const [stock, setStock] = useState(editProduct?.stock?.toString() || "0");
   const [description, setDescription] = useState(editProduct?.description || "");
   const [imageUrl, setImageUrl] = useState(editProduct?.image_url || "");
@@ -40,7 +46,18 @@ const AddProductDialog = ({ open, onOpenChange, onAdd, editProduct, storeId }: A
       if (editProduct) {
         setName(editProduct.name || "");
         setPrice(editProduct.price?.replace(/[^\d]/g, "") || "");
-        setCategory(editProduct.category || "Pratos");
+
+        const cat = editProduct.category || "Pratos";
+        if (defaultCategories.includes(cat)) {
+          setCategory(cat);
+          setCustomCategory("");
+          setIsCustom(false);
+        } else {
+          setCategory("Outro");
+          setCustomCategory(cat);
+          setIsCustom(true);
+        }
+
         setStock(editProduct.stock?.toString() || "0");
         setDescription(editProduct.description || "");
         setImageUrl(editProduct.image_url || "");
@@ -54,6 +71,8 @@ const AddProductDialog = ({ open, onOpenChange, onAdd, editProduct, storeId }: A
     setName("");
     setPrice("");
     setCategory("Pratos");
+    setCustomCategory("");
+    setIsCustom(false);
     setStock("0");
     setDescription("");
     setImageUrl("");
@@ -72,11 +91,17 @@ const AddProductDialog = ({ open, onOpenChange, onAdd, editProduct, storeId }: A
     }
 
     const formattedPrice = `${Number(price).toLocaleString("pt-AO")} Kz`;
+    const finalCategory = isCustom ? customCategory.trim() : category;
+
+    if (isCustom && !customCategory.trim()) {
+      toast.error("Insira o nome da categoria personalizada");
+      return;
+    }
 
     onAdd({
       name: name.trim(),
       price: formattedPrice,
-      category,
+      category: finalCategory,
       stock: parseInt(stock) || 0,
       active: true,
       description: description.trim(),
@@ -137,13 +162,13 @@ const AddProductDialog = ({ open, onOpenChange, onAdd, editProduct, storeId }: A
 
           <div>
             <label className="text-xs font-body font-medium text-muted-foreground block mb-1.5">Categoria</label>
-            <div className="flex flex-wrap gap-2">
-              {categories.map((cat) => (
+            <div className="flex flex-wrap gap-2 mb-3">
+              {defaultCategories.map((cat) => (
                 <button
                   key={cat}
                   type="button"
-                  onClick={() => setCategory(cat)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-body font-medium transition-all ${category === cat
+                  onClick={() => { setCategory(cat); setIsCustom(false); }}
+                  className={`px-3 py-1.5 rounded-full text-xs font-body font-medium transition-all ${category === cat && !isCustom
                     ? "bg-accent text-accent-foreground"
                     : "bg-muted text-muted-foreground hover:bg-muted/80"
                     }`}
@@ -151,7 +176,28 @@ const AddProductDialog = ({ open, onOpenChange, onAdd, editProduct, storeId }: A
                   {cat}
                 </button>
               ))}
+              <button
+                type="button"
+                onClick={() => setIsCustom(true)}
+                className={`px-3 py-1.5 rounded-full text-xs font-body font-medium transition-all ${isCustom
+                  ? "bg-accent text-accent-foreground"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  }`}
+              >
+                Outro...
+              </button>
             </div>
+
+            {isCustom && (
+              <Input
+                value={customCategory}
+                onChange={(e) => setCustomCategory(e.target.value)}
+                placeholder="Ex: Artesanato, Decoração..."
+                className="rounded-xl font-body animate-in fade-in slide-in-from-top-1 duration-200"
+                maxLength={40}
+                required
+              />
+            )}
           </div>
 
           <div>
