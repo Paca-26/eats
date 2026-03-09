@@ -133,7 +133,7 @@ const VendorDashboard = () => {
 
   if (loading) {
     return (
-      <DashboardShell title="Painel Vendedor" bottomNav={<BottomNav items={navItems} activeId="home" onNavigate={() => { }} />}>
+      <DashboardShell title="Painel Vendedor" bottomNav={<BottomNav items={initialNavItems} activeId="home" onNavigate={() => { }} />}>
         <div className="flex items-center justify-center h-64">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
