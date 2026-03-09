@@ -143,7 +143,7 @@ const VendorDashboard = () => {
 
   if (!store) {
     return (
-      <DashboardShell title="Painel Vendedor" bottomNav={<BottomNav items={navItems} activeId="home" onNavigate={() => { }} />}>
+      <DashboardShell title="Painel Vendedor" bottomNav={<BottomNav items={initialNavItems} activeId="home" onNavigate={() => { }} />}>
         <div className="container mx-auto px-4 py-12 text-center space-y-4">
           <Store className="h-16 w-16 mx-auto text-muted-foreground/40" />
           <h2 className="font-display text-2xl font-bold text-foreground">Conta Criada com Sucesso!</h2>
