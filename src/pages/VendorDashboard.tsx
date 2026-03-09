@@ -4,7 +4,8 @@ import DashboardShell from "@/components/DashboardShell";
 import BottomNav, { BottomNavItem } from "@/components/BottomNav";
 import StatCard from "@/components/StatCard";
 import AnimatedTabContent from "@/components/AnimatedTabContent";
-import { Package, ShoppingCart, Star, TrendingUp, Plus, BarChart3, Settings, MessageSquare, Grid3X3, Store, Eye, Clock, Edit, Trash2, MapPin, Phone, Mail, Save, LogOut, ToggleLeft, ToggleRight, Loader2 } from "lucide-react";
+import { Package, ShoppingCart, Star, TrendingUp, Plus, BarChart3, Settings, MessageSquare, Grid3X3, Store, Eye, Clock, Edit, Trash2, MapPin, Phone, Mail, Save, LogOut, ToggleLeft, ToggleRight, Loader2, UserPlus } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import AddProductDialog, { type Product } from "@/components/vendor/AddProductDialog";
 import StoreSetupDialog from "@/components/vendor/StoreSetupDialog";
 import ImageUpload from "@/components/vendor/ImageUpload";
@@ -516,29 +517,92 @@ const VendorReviews = () => {
 };
 
 const VendorSettings = ({ store, onUpdated }: { store: StoreData; onUpdated: () => void }) => {
-  const { email } = useDisplayUser();
+  const { email, name: initialName } = useDisplayUser();
   const [loading, setLoading] = useState(false);
+  const [categories, setCategories] = useState<{ id: string, name: string }[]>([]);
+
+  // Extract city and country from address if possible
+  const addressParts = store.address ? store.address.split(", ") : [];
+  const initialStreet = addressParts[0] || "";
+  const initialCity = addressParts[1] || "";
+  const initialCountry = addressParts[2] || "Angola";
+
   const [formData, setFormData] = useState({
     name: store.name || "",
-    address: store.address || "",
+    description: store.description || "",
+    category_id: store.category_id || "",
     phone: store.phone || "",
-    cover_url: store.cover_url || ""
+    logo_url: store.logo_url || "",
+    cover_url: store.cover_url || "",
+    street: initialStreet,
+    city: initialCity,
+    country: initialCountry,
+    userName: "",
+    userPhone: ""
   });
+
+  useEffect(() => {
+    const fetchData = async () => {
+      // Fetch categories
+      const { data: cats } = await supabase.from("categories").select("id, name").order("name");
+      if (cats) setCategories(cats);
+
+      // Fetch user profile
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("full_name, phone")
+          .eq("id", user.id)
+          .maybeSingle();
+
+        if (profile) {
+          setFormData(prev => ({
+            ...prev,
+            userName: profile.full_name || initialName,
+            userPhone: profile.phone || ""
+          }));
+        }
+      }
+    };
+    fetchData();
+  }, [initialName]);
 
   const handleSave = async () => {
     setLoading(true);
-    const { error } = await supabase
+    const fullAddress = `${formData.street}${formData.city ? `, ${formData.city}` : ""}${formData.country ? `, ${formData.country}` : ""}`;
+
+    // Update store
+    const { error: storeError } = await supabase
       .from("stores")
       .update({
         name: formData.name,
-        address: formData.address,
+        description: formData.description,
+        category_id: formData.category_id || null,
+        address: fullAddress,
         phone: formData.phone,
+        logo_url: formData.logo_url,
         cover_url: formData.cover_url,
         updated_at: new Date().toISOString()
       })
       .eq("id", store.id);
 
-    if (error) {
+    // Update profile
+    const { data: { user } } = await supabase.auth.getUser();
+    let profileError = null;
+    if (user) {
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          full_name: formData.userName,
+          phone: formData.userPhone,
+          updated_at: new Date().toISOString()
+        })
+        .eq("id", user.id);
+      profileError = error;
+    }
+
+    if (storeError || profileError) {
       toast.error("Erro ao guardar alterações");
     } else {
       toast.success("Definições actualizadas");
@@ -548,27 +612,94 @@ const VendorSettings = ({ store, onUpdated }: { store: StoreData; onUpdated: () 
   };
 
   return (
-    <div className="space-y-5">
-      <h2 className="font-display text-2xl font-bold text-foreground">Definições da Loja</h2>
+    <div className="space-y-6 pb-20">
+      <h2 className="font-display text-2xl font-bold text-foreground">Definições</h2>
 
-      <div className="space-y-2">
-        <label className="text-xs font-body font-semibold text-muted-foreground ml-1">Foto de Capa</label>
-        <ImageUpload
-          bucket="store-images"
-          folder={store.id}
-          currentUrl={formData.cover_url}
-          onUploaded={(url) => setFormData(prev => ({ ...prev, cover_url: url }))}
-          aspectRatio="wide"
-          className="w-full"
-        />
+      {/* User Profile Settings */}
+      <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+        <h3 className="font-display font-bold text-foreground flex items-center gap-2">
+          <UserPlus className="h-5 w-5 text-accent" /> Dados da Conta
+        </h3>
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-xs font-body font-semibold text-muted-foreground ml-1">Seu Nome</label>
+            <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-xl border border-transparent focus-within:border-accent/30 transition-all">
+              <UserPlus className="h-4 w-4 text-muted-foreground shrink-0" />
+              <input
+                value={formData.userName}
+                onChange={(e) => setFormData(prev => ({ ...prev, userName: e.target.value }))}
+                className="bg-transparent border-none focus:ring-0 text-sm font-body text-foreground w-full p-0"
+                placeholder="Seu nome completo"
+              />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-body font-semibold text-muted-foreground ml-1">Seu Telefone</label>
+            <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-xl border border-transparent focus-within:border-accent/30 transition-all">
+              <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+              <input
+                value={formData.userPhone}
+                onChange={(e) => setFormData(prev => ({ ...prev, userPhone: e.target.value }))}
+                className="bg-transparent border-none focus:ring-0 text-sm font-body text-foreground w-full p-0"
+                placeholder="9XX XXX XXX"
+              />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-body font-semibold text-muted-foreground ml-1">Email (não editável)</label>
+            <div className="flex items-center gap-3 p-3 bg-muted/10 rounded-xl opacity-60">
+              <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+              <span className="text-sm font-body text-foreground">
+                {email || "—"}
+              </span>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="bg-card border border-border rounded-2xl p-5">
-        <h3 className="font-display font-bold text-foreground mb-4">Informações Gerais</h3>
+      {/* Store Identity Settings */}
+      <div className="space-y-4">
+        <h3 className="font-display font-bold text-foreground ml-1 flex items-center gap-2">
+          <Store className="h-5 w-5 text-accent" /> Identidade da Loja
+        </h3>
+
+        <div className="space-y-2">
+          <label className="text-xs font-body font-semibold text-muted-foreground ml-1">Foto de Capa (Banner)</label>
+          <ImageUpload
+            bucket="store-images"
+            folder={store.id}
+            currentUrl={formData.cover_url}
+            onUploaded={(url) => setFormData(prev => ({ ...prev, cover_url: url }))}
+            aspectRatio="wide"
+            className="w-full"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <label className="text-xs font-body font-semibold text-muted-foreground ml-1">Logótipo da Loja</label>
+          <div className="flex items-center gap-4">
+            <div className="w-24 h-24 shrink-0">
+              <ImageUpload
+                bucket="store-images"
+                folder={store.id}
+                currentUrl={formData.logo_url}
+                onUploaded={(url) => setFormData(prev => ({ ...prev, logo_url: url }))}
+                aspectRatio="square"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground font-body">Use uma imagem quadrada para melhor visualização (Recomendado: 512x512px).</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Store Information Settings */}
+      <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+        <h3 className="font-display font-bold text-foreground">Informações da Loja</h3>
+
         <div className="space-y-4">
           <div className="space-y-1.5">
             <label className="text-xs font-body font-semibold text-muted-foreground ml-1">Nome da Loja</label>
-            <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-xl">
+            <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-xl border border-transparent focus-within:border-accent/30 transition-all">
               <Store className="h-4 w-4 text-muted-foreground shrink-0" />
               <input
                 value={formData.name}
@@ -579,20 +710,38 @@ const VendorSettings = ({ store, onUpdated }: { store: StoreData; onUpdated: () 
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-body font-semibold text-muted-foreground ml-1">Endereço</label>
-            <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-xl">
-              <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
-              <input
-                value={formData.address}
-                onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
-                className="bg-transparent border-none focus:ring-0 text-sm font-body text-foreground w-full p-0"
-              />
+            <label className="text-xs font-body font-semibold text-muted-foreground ml-1">Categoria</label>
+            <div className="flex flex-wrap gap-2">
+              {categories.map((cat) => (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, category_id: cat.id }))}
+                  className={`px-3 py-1.5 rounded-full text-xs font-body font-medium transition-all ${formData.category_id === cat.id
+                    ? "bg-accent text-accent-foreground border-accent"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80 border-transparent"
+                    } border`}
+                >
+                  {cat.name}
+                </button>
+              ))}
             </div>
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-xs font-body font-semibold text-muted-foreground ml-1">Telefone</label>
-            <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-xl">
+            <label className="text-xs font-body font-semibold text-muted-foreground ml-1">Descrição</label>
+            <textarea
+              value={formData.description}
+              onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+              placeholder="Descreva o que a sua loja oferece..."
+              className="flex w-full rounded-xl border-none bg-muted/50 px-3 py-3 text-sm font-body ring-offset-background placeholder:text-muted-foreground focus:ring-1 focus:ring-accent/30 min-h-[80px] resize-none"
+              maxLength={300}
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-body font-semibold text-muted-foreground ml-1">Telefone de Contacto (Loja)</label>
+            <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-xl border border-transparent focus-within:border-accent/30 transition-all">
               <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
               <input
                 value={formData.phone}
@@ -601,58 +750,89 @@ const VendorSettings = ({ store, onUpdated }: { store: StoreData; onUpdated: () 
               />
             </div>
           </div>
+        </div>
+      </div>
 
+      {/* Localization Settings */}
+      <div className="bg-card border border-border rounded-2xl p-5 space-y-4">
+        <h3 className="font-display font-bold text-foreground flex items-center gap-2">
+          <MapPin className="h-5 w-5 text-accent" /> Localização
+        </h3>
+        <div className="grid grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <label className="text-xs font-body font-semibold text-muted-foreground ml-1">Email (não editável)</label>
-            <div className="flex items-center gap-3 p-3 bg-muted/10 rounded-xl opacity-60">
-              <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
-              <span className="text-sm font-body text-foreground">{email || "—"}</span>
-            </div>
+            <label className="text-xs font-body font-semibold text-muted-foreground ml-1">País</label>
+            <Input value={formData.country} onChange={(e) => setFormData(prev => ({ ...prev, country: e.target.value }))} className="rounded-xl font-body bg-muted/50 border-none h-11" />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-body font-semibold text-muted-foreground ml-1">Cidade</label>
+            <Input value={formData.city} onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))} className="rounded-xl font-body bg-muted/50 border-none h-11" />
+          </div>
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-xs font-body font-semibold text-muted-foreground ml-1">Rua / Número</label>
+          <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-xl border border-transparent focus-within:border-accent/30 transition-all">
+            <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
+            <input
+              value={formData.street}
+              onChange={(e) => setFormData(prev => ({ ...prev, street: e.target.value }))}
+              placeholder="Ex: Rua Direita da Maianga, nº 45"
+              className="bg-transparent border-none focus:ring-0 text-sm font-body text-foreground w-full p-0"
+            />
           </div>
         </div>
       </div>
 
-      <div className="bg-card border border-border rounded-2xl p-5">
-        <h3 className="font-display font-bold text-foreground mb-4">Horário de Funcionamento</h3>
-        <div className="space-y-2">
-          {[
-            { day: "Segunda - Sexta", hours: "08:00 - 22:00" },
-            { day: "Sábado", hours: "09:00 - 23:00" },
-            { day: "Domingo", hours: "10:00 - 20:00" },
-          ].map((h) => (
-            <div key={h.day} className="flex items-center justify-between p-3 bg-muted/50 rounded-xl">
-              <span className="text-sm font-body text-foreground">{h.day}</span>
-              <span className="text-sm font-body font-semibold text-foreground">{h.hours}</span>
-            </div>
-          ))}
+      {/* Operational Settings */}
+      <div className="bg-card border border-border rounded-2xl overflow-hidden divide-y divide-border">
+        <div className="p-4 flex items-center justify-between">
+          <div>
+            <span className="font-body font-semibold text-foreground text-sm block">Receber notificações</span>
+            <span className="text-xs text-muted-foreground font-body">Alertas de novas encomendas</span>
+          </div>
+          <div className="w-10 h-6 rounded-full relative cursor-pointer transition-colors bg-emerald-500">
+            <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-white shadow-sm" />
+          </div>
+        </div>
+        <div className="p-4 flex items-center justify-between">
+          <div>
+            <span className="font-body font-semibold text-foreground text-sm block">Loja visível</span>
+            <span className="text-xs text-muted-foreground font-body">Aparecer nos resultados de pesquisa</span>
+          </div>
+          <div
+            onClick={async () => {
+              const { error } = await supabase.from("stores").update({ is_active: !store.is_active }).eq("id", store.id);
+              if (!error) onUpdated();
+            }}
+            className={`w-10 h-6 rounded-full relative cursor-pointer transition-colors ${store.is_active ? "bg-emerald-500" : "bg-muted"}`}
+          >
+            <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${store.is_active ? "right-1" : "left-1"}`} />
+          </div>
+        </div>
+        <div className="p-4 flex items-center justify-between">
+          <div>
+            <span className="font-body font-semibold text-foreground text-sm block">Aceitar encomendas</span>
+            <span className="text-xs text-muted-foreground font-body">Permitir novos pedidos</span>
+          </div>
+          <div className="w-10 h-6 rounded-full relative cursor-pointer transition-colors bg-emerald-500">
+            <div className="absolute top-1 right-1 w-4 h-4 rounded-full bg-white shadow-sm" />
+          </div>
         </div>
       </div>
-      <div className="bg-card border border-border rounded-2xl overflow-hidden divide-y divide-border">
-        {[
-          { label: "Receber notificações", desc: "Alertas de novas encomendas", active: true },
-          { label: "Loja visível", desc: "Aparecer nos resultados de pesquisa", active: store.is_active },
-          { label: "Aceitar encomendas", desc: "Permitir novos pedidos", active: true },
-        ].map((toggle) => (
-          <div key={toggle.label} className="flex items-center justify-between p-4">
-            <div>
-              <span className="font-body font-semibold text-foreground text-sm block">{toggle.label}</span>
-              <span className="text-xs text-muted-foreground font-body">{toggle.desc}</span>
-            </div>
-            <div className={`w-10 h-6 rounded-full relative cursor-pointer transition-colors ${toggle.active ? "bg-emerald-500" : "bg-muted"}`}>
-              <div className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${toggle.active ? "right-1" : "left-1"}`} />
-            </div>
-          </div>
-        ))}
+
+      <div className="sticky bottom-6 pt-4 bg-background/80 backdrop-blur-sm">
+        <Button
+          onClick={handleSave}
+          disabled={loading}
+          className="w-full rounded-xl h-12 gap-2 font-body bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg hover:shadow-orange-500/20 transition-all font-bold"
+        >
+          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+          Guardar Todas as Alterações
+        </Button>
       </div>
-      <Button
-        onClick={handleSave}
-        disabled={loading}
-        className="w-full rounded-xl h-12 gap-2 font-body bg-gradient-to-r from-amber-500 to-orange-500 text-white"
-      >
-        {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-        Guardar Alterações
-      </Button>
-      <VendorLogoutButton />
+
+      <div className="pt-2">
+        <VendorLogoutButton />
+      </div>
     </div>
   );
 };
