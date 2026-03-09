@@ -71,37 +71,47 @@ const ClientHome = ({ profile }: { profile: any }) => {
 
   return (
     <div className="space-y-7">
-      <div className="bg-card border border-border rounded-3xl p-6 shadow-sm overflow-hidden relative group transition-all duration-300 hover:shadow-md active:scale-[0.99]">
-        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-          <Sparkles className="h-20 w-20 text-accent rotate-12" />
+      <div className="relative rounded-[2.5rem] p-8 shadow-2xl overflow-hidden border border-white/10 group transition-all duration-500 hover:shadow-blue-500/10 active:scale-[0.99] bg-zinc-900 lg:p-10 mb-8">
+        {/* Procedural Mesh Background */}
+        <div className="absolute inset-0 opacity-40">
+          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600 rounded-full blur-[80px] animate-pulse" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-indigo-600 rounded-full blur-[80px] animate-pulse delay-700" />
+          <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10" />
         </div>
-        <div className="flex items-start gap-5 relative z-10">
+
+        <div className="flex flex-col md:flex-row items-center md:items-start gap-8 relative z-10">
           <div className="relative shrink-0">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 border-4 border-white dark:border-zinc-900 shadow-xl flex items-center justify-center text-white text-2xl font-display font-bold overflow-hidden ring-4 ring-blue-500/20">
+            <div className="w-28 h-28 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 border-[6px] border-zinc-800 shadow-2xl flex items-center justify-center text-white text-3xl font-display font-bold overflow-hidden ring-1 ring-white/20">
               {profile?.avatar_url ? (
                 <img src={profile.avatar_url} alt={name} className="w-full h-full object-cover" />
               ) : (
                 <span>{initials}</span>
               )}
             </div>
-            <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-emerald-500 border-2 border-white dark:border-zinc-900 rounded-full shadow-sm flex items-center justify-center" title="Online">
-              <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+            <div className="absolute bottom-1 right-1 w-8 h-8 bg-zinc-800 border-4 border-emerald-500 rounded-full shadow-lg flex items-center justify-center">
+              <div className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-ping absolute" />
+              <div className="w-2 h-2 bg-emerald-500 rounded-full" />
             </div>
           </div>
 
-          <div className="flex-1 space-y-1">
-            <p className="text-muted-foreground font-body text-xs font-medium uppercase tracking-widest flex items-center gap-1.5 ring-offset-2 ring-1 ring-emerald-500/20 w-fit px-2 py-0.5 rounded-full mb-1 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400">
-              <Timer className="h-3 w-3" /> Bom dia
-            </p>
-            <h1 className="font-display text-2xl font-bold text-foreground leading-tight tracking-tight">{profile?.full_name || name}</h1>
-            <div className="flex flex-col gap-1.5 pt-1">
-              <div className="flex items-center gap-2 text-muted-foreground font-body text-xs">
-                <div className="p-1 rounded-md bg-muted/50 text-muted-foreground shrink-0"><Phone className="h-3 w-3" /></div>
-                <span>{profile?.phone || "Telemóvel não definido"}</span>
+          <div className="flex-1 text-center md:text-left space-y-3">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 backdrop-blur-md">
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+              <p className="text-blue-100/80 font-body text-[10px] font-bold uppercase tracking-[0.2em]">Seja bem-vindo</p>
+            </div>
+
+            <h1 className="font-display text-3xl md:text-4xl font-extrabold text-white leading-tight tracking-tight drop-shadow-sm">
+              {profile?.full_name || name}
+            </h1>
+
+            <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 pt-2">
+              <div className="flex items-center gap-2.5 bg-white/5 hover:bg-white/10 transition-colors px-4 py-2 rounded-2xl border border-white/5 backdrop-blur-sm group/item">
+                <div className="p-1.5 rounded-lg bg-blue-500/20 text-blue-400"><Phone className="h-3.5 w-3.5" /></div>
+                <span className="text-sm font-body font-medium text-zinc-300 group-hover/item:text-white transition-colors">{profile?.phone || "Não definido"}</span>
               </div>
-              <div className="flex items-center gap-2 text-muted-foreground font-body text-xs">
-                <div className="p-1 rounded-md bg-muted/50 text-muted-foreground shrink-0"><MapPin className="h-3 w-3" /></div>
-                <span>{profile?.zones?.name || "Luanda, Angola"}</span>
+              <div className="flex items-center gap-2.5 bg-white/5 hover:bg-white/10 transition-colors px-4 py-2 rounded-2xl border border-white/5 backdrop-blur-sm group/item">
+                <div className="p-1.5 rounded-lg bg-indigo-500/20 text-indigo-400"><MapPin className="h-3.5 w-3.5" /></div>
+                <span className="text-sm font-body font-medium text-zinc-300 group-hover/item:text-white transition-colors">{profile?.zones?.name || "Luanda, Angola"}</span>
               </div>
             </div>
           </div>
