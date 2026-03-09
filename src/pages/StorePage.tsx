@@ -1,9 +1,10 @@
 import { useParams, Link } from "react-router-dom";
 import Footer from "@/components/Footer";
-import { Star, Clock, MapPin, Phone, ArrowLeft, Plus, Minus, Heart, Share2, ShoppingBag, Truck, Award, ChefHat } from "lucide-react";
+import { Star, Clock, MapPin, Phone, ArrowLeft, Plus, Minus, Heart, Share2, ShoppingBag, Truck, Award, ChefHat, Loader2, Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import categoryTalho from "@/assets/category-talho.jpg";
 import categoryPeixaria from "@/assets/category-peixaria.jpg";
 import categoryMercearia from "@/assets/category-mercearia.jpg";
@@ -171,10 +172,83 @@ const mockStores: Record<string, any> = {
 
 const StorePage = () => {
   const { storeSlug } = useParams<{ storeSlug: string }>();
-  const store = storeSlug ? mockStores[storeSlug] : null;
+  const [store, setStore] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const [cart, setCart] = useState<Record<string, number>>({});
   const [liked, setLiked] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchStoreData = async () => {
+      if (!storeSlug) return;
+
+      setLoading(true);
+
+      // Check if it's a mock store first for backward compatibility
+      if (mockStores[storeSlug]) {
+        setStore(mockStores[storeSlug]);
+        setLoading(false);
+        return;
+      }
+
+      try {
+        // Fetch store info
+        const { data: storeData, error: storeError } = await supabase
+          .from("stores")
+          .select("*, categories(name), zones(name)")
+          .eq("id", storeSlug)
+          .maybeSingle();
+
+        if (storeError) throw storeError;
+
+        if (!storeData) {
+          setStore(null);
+          return;
+        }
+
+        // Fetch store products
+        const { data: productsData, error: productsError } = await supabase
+          .from("products")
+          .select("*")
+          .eq("store_id", storeSlug)
+          .eq("is_available", true);
+
+        if (productsError) throw productsError;
+
+        // Map database store to UI format
+        const formattedStore = {
+          ...storeData,
+          category: storeData.categories?.name || "Loja",
+          zone: storeData.zones?.name || "Luanda",
+          image: storeData.cover_url || storeData.logo_url || categoryRestaurante,
+          totalReviews: storeData.total_reviews || 0,
+          rating: storeData.average_rating || 0,
+          deliveryTime: "30-45 min", // Default for now
+          deliveryFee: 500, // Default for now
+          minOrder: 2000, // Default for now
+          tags: ["Popular"],
+          products: productsData || []
+        };
+
+        setStore(formattedStore);
+      } catch (error) {
+        console.error("Erro ao carregar dados da loja:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStoreData();
+  }, [storeSlug]);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen gap-4">
+        <Loader2 className="h-10 w-10 text-accent animate-spin" />
+        <p className="font-body text-muted-foreground animate-pulse">Carregando loja...</p>
+      </div>
+    );
+  }
 
   if (!store) {
     return (
@@ -301,8 +375,12 @@ const StorePage = () => {
                   className="group bg-card rounded-xl border border-border p-4 flex gap-4 hover:shadow-lg hover:border-accent/30 transition-all duration-300 animate-fade-in"
                   style={{ animationDelay: `${idx * 0.05}s` }}
                 >
-                  <div className="relative w-20 h-20 rounded-xl overflow-hidden flex-shrink-0">
-                    <img src={product.image} alt={product.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                  <div className="relative w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 bg-muted flex items-center justify-center">
+                    {product.image_url || product.image ? (
+                      <img src={product.image_url || product.image} alt={product.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                    ) : (
+                      <ShoppingBag className="h-8 w-8 text-muted-foreground/50" />
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-display font-semibold text-card-foreground truncate text-sm">{product.name}</h3>
