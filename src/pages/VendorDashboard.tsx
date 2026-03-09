@@ -33,6 +33,7 @@ interface StoreData {
   cover_url: string | null;
   average_rating: number | null;
   is_active: boolean;
+  category_id: string | null;
 }
 
 interface DashboardStats {
@@ -58,7 +59,7 @@ const VendorDashboard = () => {
 
       const { data } = await supabase
         .from("stores")
-        .select("id, name, address, phone, description, logo_url, cover_url, average_rating, is_active")
+        .select("id, name, address, phone, description, logo_url, cover_url, average_rating, is_active, category_id")
         .eq("owner_id", user.id)
         .maybeSingle();
 
@@ -86,7 +87,7 @@ const VendorDashboard = () => {
   const refreshStore = async () => {
     const { data } = await supabase
       .from("stores")
-      .select("id, name, address, phone, description, logo_url, cover_url, average_rating, is_active")
+      .select("id, name, address, phone, description, logo_url, cover_url, average_rating, is_active, category_id")
       .eq("owner_id", userId)
       .maybeSingle();
     setStore(data);

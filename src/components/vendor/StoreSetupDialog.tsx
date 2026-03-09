@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,12 +21,26 @@ const StoreSetupDialog = ({ open, onOpenChange, onCreated, userId }: StoreSetupD
   const [description, setDescription] = useState("");
   const [logoUrl, setLogoUrl] = useState("");
   const [coverUrl, setCoverUrl] = useState("");
+  const [categories, setCategories] = useState<{ id: string, name: string }[]>([]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      const { data } = await supabase
+        .from("categories")
+        .select("id, name")
+        .order("name");
+      if (data) setCategories(data);
+    };
+    fetchCategories();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) { toast.error("Insira o nome da loja"); return; }
     if (!address.trim()) { toast.error("Insira a localização"); return; }
+    if (!selectedCategoryId) { toast.error("Selecione uma categoria para a sua loja"); return; }
 
     setSaving(true);
     const { error } = await supabase.from("stores").insert({
@@ -36,6 +50,7 @@ const StoreSetupDialog = ({ open, onOpenChange, onCreated, userId }: StoreSetupD
       description: description.trim() || null,
       logo_url: logoUrl || null,
       cover_url: coverUrl || null,
+      category_id: selectedCategoryId,
       owner_id: userId,
     });
 
@@ -72,6 +87,28 @@ const StoreSetupDialog = ({ open, onOpenChange, onCreated, userId }: StoreSetupD
           <div>
             <label className="text-xs font-body font-medium text-muted-foreground block mb-1.5">Nome da Loja *</label>
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Restaurante Sabor Angolano" className="rounded-xl font-body" maxLength={100} />
+          </div>
+
+          <div>
+            <label className="text-xs font-body font-medium text-muted-foreground block mb-1.5">Categoria da Loja *</label>
+            <div className="flex flex-wrap gap-2 mb-2">
+              {categories.map((cat) => (
+                <button
+                  key={cat.id}
+                  type="button"
+                  onClick={() => setSelectedCategoryId(cat.id)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-body font-medium transition-all ${selectedCategoryId === cat.id
+                      ? "bg-accent text-accent-foreground border-accent"
+                      : "bg-muted text-muted-foreground hover:bg-muted/80 border-transparent"
+                    } border`}
+                >
+                  {cat.name}
+                </button>
+              ))}
+              {categories.length === 0 && (
+                <p className="text-xs text-muted-foreground font-body py-2 italic">Carregando categorias...</p>
+              )}
+            </div>
           </div>
 
           <div>
