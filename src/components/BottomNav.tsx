@@ -4,6 +4,7 @@ export interface BottomNavItem {
   label: string;
   icon: LucideIcon;
   id: string;
+  badgeCount?: number;
 }
 
 interface BottomNavProps {
@@ -23,15 +24,21 @@ const BottomNav = ({ items, activeId, onNavigate }: BottomNavProps) => {
             <button
               key={item.id}
               onClick={() => onNavigate(item.id)}
-              className={`flex flex-col items-center gap-0.5 py-2 px-3 rounded-xl transition-all duration-200 min-w-[64px] ${
-                isActive
+              className={`flex flex-col items-center gap-0.5 py-2 px-3 rounded-xl transition-all duration-200 min-w-[64px] relative ${isActive
                   ? "text-accent scale-105"
                   : "text-muted-foreground hover:text-foreground"
-              }`}
+                }`}
             >
               <div className={`p-1.5 rounded-xl transition-all duration-200 ${isActive ? "bg-accent/10" : ""}`}>
                 <Icon className={`h-5 w-5 transition-all duration-200 ${isActive ? "stroke-[2.5]" : "stroke-[1.5]"}`} />
               </div>
+
+              {item.badgeCount && item.badgeCount > 0 ? (
+                <span className="absolute top-1.5 right-3 bg-red-500 text-white text-[10px] font-bold h-4 w-4 rounded-full flex items-center justify-center border-2 border-card shadow-sm animate-in zoom-in duration-300">
+                  {item.badgeCount > 9 ? "9+" : item.badgeCount}
+                </span>
+              ) : null}
+
               <span className={`text-[10px] font-body transition-all duration-200 ${isActive ? "font-bold" : "font-medium"}`}>
                 {item.label}
               </span>

@@ -16,7 +16,7 @@ import { useDisplayUser } from "@/hooks/useDisplayUser";
 import { supabase } from "@/integrations/supabase/client";
 import heroVendor from "@/assets/hero-vendor.jpg";
 
-const navItems: BottomNavItem[] = [
+const initialNavItems: BottomNavItem[] = [
   { label: "Início", icon: BarChart3, id: "home" },
   { label: "Produtos", icon: Grid3X3, id: "products" },
   { label: "Encomendas", icon: ShoppingCart, id: "orders" },
@@ -51,6 +51,7 @@ const VendorDashboard = () => {
   const [showSetup, setShowSetup] = useState(false);
   const [userId, setUserId] = useState<string>("");
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     const fetchStore = async () => {
@@ -68,9 +69,10 @@ const VendorDashboard = () => {
 
       if (data) {
         // Fetch stats
-        const [productsRes, ordersRes] = await Promise.all([
+        const [productsRes, ordersRes, unreadRes] = await Promise.all([
           supabase.from("products").select("id", { count: "exact", head: true }).eq("store_id", data.id),
-          supabase.from("orders").select("id, total", { count: "exact" }).eq("store_id", data.id)
+          supabase.from("orders").select("id, total", { count: "exact" }).eq("store_id", data.id),
+          supabase.from("orders").select("id", { count: "exact", head: true }).eq("store_id", data.id).eq("status", "pending")
         ]);
 
         const productsCount = productsRes.count || 0;
@@ -78,6 +80,24 @@ const VendorDashboard = () => {
         const revenue = ordersRes.data?.reduce((acc, order) => acc + (order.total || 0), 0) || 0;
 
         setStats({ productsCount, ordersCount, revenue });
+        setUnreadCount(unreadRes.count || 0);
+
+        // Subscribe to new orders
+        const subscription = supabase
+          .channel(`store-orders-${data.id}`)
+          .on('postgres_changes', {
+            event: '*',
+            schema: 'public',
+            table: 'orders',
+            filter: `store_id=eq.${data.id}`
+          }, () => {
+            refreshStore();
+          })
+          .subscribe();
+
+        return () => {
+          supabase.removeChannel(subscription);
+        };
       }
 
       setLoading(false);
@@ -86,6 +106,9 @@ const VendorDashboard = () => {
   }, []);
 
   const refreshStore = async () => {
+    if (!userId) return;
+
+    // We need to get the store ID again or use the existing one
     const { data } = await supabase
       .from("stores")
       .select("id, name, address, phone, description, logo_url, cover_url, average_rating, is_active, category_id")
@@ -94,15 +117,17 @@ const VendorDashboard = () => {
     setStore(data);
 
     if (data) {
-      const [productsRes, ordersRes] = await Promise.all([
+      const [productsRes, ordersRes, unreadRes] = await Promise.all([
         supabase.from("products").select("id", { count: "exact", head: true }).eq("store_id", data.id),
-        supabase.from("orders").select("id, total", { count: "exact" }).eq("store_id", data.id)
+        supabase.from("orders").select("id, total", { count: "exact" }).eq("store_id", data.id),
+        supabase.from("orders").select("id", { count: "exact", head: true }).eq("store_id", data.id).eq("status", "pending")
       ]);
       setStats({
         productsCount: productsRes.count || 0,
         ordersCount: ordersRes.count || 0,
         revenue: ordersRes.data?.reduce((acc, order) => acc + (order.total || 0), 0) || 0
       });
+      setUnreadCount(unreadRes.count || 0);
     }
   };
 
@@ -133,14 +158,18 @@ const VendorDashboard = () => {
     );
   }
 
+  const navItems = initialNavItems.map(item =>
+    item.id === "orders" ? { ...item, badgeCount: unreadCount } : item
+  );
+
   const renderContent = () => {
     switch (activeTab) {
-      case "home": return <VendorHome store={store} stats={stats} onNavigate={setActiveTab} onAddProduct={() => { setActiveTab("products"); setIsAddProductOpen(true); }} />;
+      case "home": return <VendorHome store={store} stats={stats} unreadCount={unreadCount} onNavigate={setActiveTab} onAddProduct={() => { setActiveTab("products"); setIsAddProductOpen(true); }} />;
       case "products": return <VendorProducts storeId={store.id} onUpdate={refreshStore} isAddProductOpen={isAddProductOpen} setIsAddProductOpen={setIsAddProductOpen} />;
-      case "orders": return <VendorOrders />;
+      case "orders": return <VendorOrders storeId={store.id} onUpdate={refreshStore} />;
       case "reviews": return <VendorReviews />;
       case "settings": return <VendorSettings store={store} onUpdated={refreshStore} />;
-      default: return <VendorHome store={store} stats={stats} onNavigate={setActiveTab} onAddProduct={() => { setActiveTab("products"); setIsAddProductOpen(true); }} />;
+      default: return <VendorHome store={store} stats={stats} unreadCount={unreadCount} onNavigate={setActiveTab} onAddProduct={() => { setActiveTab("products"); setIsAddProductOpen(true); }} />;
     }
   };
 
@@ -158,7 +187,7 @@ const VendorDashboard = () => {
   );
 };
 
-const VendorHome = ({ store, stats, onNavigate, onAddProduct }: { store: StoreData, stats: DashboardStats, onNavigate: (id: string) => void, onAddProduct: () => void }) => {
+const VendorHome = ({ store, stats, unreadCount, onNavigate, onAddProduct }: { store: StoreData, stats: DashboardStats, unreadCount: number, onNavigate: (id: string) => void, onAddProduct: () => void }) => {
   const { name } = useDisplayUser();
   return (
     <div className="space-y-6">
@@ -198,7 +227,7 @@ const VendorHome = ({ store, stats, onNavigate, onAddProduct }: { store: StoreDa
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard label="Produtos" value={String(stats.productsCount)} icon={Package} />
-        <StatCard label="Encomendas" value={String(stats.ordersCount)} icon={ShoppingCart} />
+        <StatCard label="Encomendas" value={String(stats.ordersCount)} icon={ShoppingCart} badge={unreadCount > 0 ? `${unreadCount} novas` : undefined} />
         <StatCard label="Avaliação" value={String(store.average_rating || 0)} icon={Star} />
         <StatCard label="Receita" value={`${stats.revenue.toLocaleString("pt-AO")} Kz`} icon={TrendingUp} />
       </div>
@@ -459,46 +488,108 @@ const VendorProducts = ({ storeId, onUpdate, isAddProductOpen, setIsAddProductOp
   );
 };
 
-const VendorOrders = () => {
-  const [filter, setFilter] = useState("all");
-  const orders = [
-    { id: "#2045", client: "Maria Silva", items: "2x Frango Grelhado, 1x Sumo", total: "5.800 Kz", status: "Nova", statusColor: "bg-amber-100 text-amber-700", time: "14:30", address: "Talatona, Rua 21" },
-    { id: "#2044", client: "Pedro Moreira", items: "3x Bifes, 1x Salada", total: "7.200 Kz", status: "Preparando", statusColor: "bg-blue-100 text-blue-700", time: "14:10", address: "Maianga, Rua Principal" },
-    { id: "#2043", client: "Ana Lopes", items: "1x Menu Completo", total: "3.800 Kz", status: "Pronto", statusColor: "bg-emerald-100 text-emerald-700", time: "13:45", address: "Viana, Bloco 5" },
-    { id: "#2040", client: "João Costa", items: "2x Arroz Marisco", total: "9.600 Kz", status: "Entregue", statusColor: "bg-emerald-100 text-emerald-700", time: "12:30", address: "Talatona" },
-  ];
+const VendorOrders = ({ storeId, onUpdate }: { storeId: string, onUpdate: () => void }) => {
+  const [activeFilter, setActiveFilter] = useState("all");
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchOrders = async () => {
+    setLoading(true);
+    let query = supabase
+      .from("orders")
+      .select(`
+        *,
+        profiles:customer_id (full_name)
+      `)
+      .eq("store_id", storeId)
+      .order("created_at", { ascending: false });
+
+    if (activeFilter === "pending") query = query.eq("status", "pending");
+    if (activeFilter === "preparing") query = query.eq("status", "preparing");
+    if (activeFilter === "completed") query = query.in("status", ["delivered", "cancelled"]);
+
+    const { data, error } = await query;
+    if (data) setOrders(data);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchOrders();
+  }, [storeId, activeFilter]);
+
+  const handleUpdateStatus = async (orderId: string, newStatus: string) => {
+    const { error } = await supabase
+      .from("orders")
+      .update({ status: newStatus })
+      .eq("id", orderId);
+
+    if (error) {
+      toast.error("Erro ao atualizar pedido");
+    } else {
+      toast.success("Pedido atualizado");
+      fetchOrders();
+      onUpdate();
+    }
+  };
+
+  const getStatusDisplay = (status: string) => {
+    switch (status) {
+      case "pending": return { label: "Nova", color: "bg-amber-100 text-amber-700" };
+      case "preparing": return { label: "Preparando", color: "bg-blue-100 text-blue-700" };
+      case "delivered": return { label: "Entregue", color: "bg-emerald-100 text-emerald-700" };
+      case "cancelled": return { label: "Cancelado", color: "bg-red-100 text-red-700" };
+      default: return { label: status, color: "bg-gray-100 text-gray-700" };
+    }
+  };
 
   return (
     <div className="space-y-5">
       <h2 className="font-display text-2xl font-bold text-foreground">Encomendas</h2>
-      <div className="flex gap-2">
-        {[["all", "Todas"], ["new", "Novas"], ["preparing", "Preparando"], ["done", "Concluídas"]].map(([k, v]) => (
-          <button key={k} onClick={() => setFilter(k)} className={`px-3 py-1.5 rounded-full text-xs font-body font-medium transition-all ${filter === k ? "bg-accent text-accent-foreground" : "bg-muted text-muted-foreground"}`}>{v}</button>
+      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
+        {[["all", "Todas"], ["pending", "Novas"], ["preparing", "Preparando"], ["completed", "Concluídas"]].map(([k, v]) => (
+          <button key={k} onClick={() => setActiveFilter(k)} className={`px-3 py-1.5 rounded-full text-xs font-body font-medium transition-all whitespace-nowrap ${activeFilter === k ? "bg-accent text-accent-foreground shadow-sm" : "bg-card text-muted-foreground border border-border hover:border-accent/50"}`}>{v}</button>
         ))}
       </div>
-      <div className="space-y-3">
-        {orders.map((o) => (
-          <div key={o.id} className="bg-card border border-border rounded-2xl p-4 hover:shadow-md transition-all">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <span className="font-body font-bold text-foreground text-sm">{o.id}</span>
-                <span className={`text-[10px] font-body font-semibold px-2 py-0.5 rounded-full ${o.statusColor}`}>{o.status}</span>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+      ) : orders.length === 0 ? (
+        <div className="text-center py-12 text-muted-foreground font-body">
+          <ShoppingCart className="h-10 w-10 mx-auto mb-3 opacity-40" />
+          <p className="text-sm">Nenhuma encomenda encontrada.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {orders.map((o) => {
+            const status = getStatusDisplay(o.status);
+            return (
+              <div key={o.id} className="bg-card border border-border rounded-2xl p-4 hover:shadow-md transition-all">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-body font-bold text-foreground text-sm">#{o.id.slice(0, 4)}</span>
+                    <span className={`text-[10px] font-body font-semibold px-2 py-0.5 rounded-full ${status.color}`}>{status.label}</span>
+                  </div>
+                  <span className="text-xs text-muted-foreground font-body">{new Date(o.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                </div>
+                <p className="font-display font-bold text-foreground text-sm">{(o.profiles as any)?.full_name || "Cliente"}</p>
+                <p className="text-xs text-muted-foreground font-body mt-1 flex items-center gap-1"><MapPin className="h-3 w-3" /> {o.delivery_address || "Não especificado"}</p>
+                <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
+                  <span className="font-body font-bold text-foreground">{Number(o.total).toLocaleString("pt-AO")} Kz</span>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" className="rounded-xl h-8 text-xs font-body">Detalhes</Button>
+                    {o.status === "pending" && (
+                      <Button onClick={() => handleUpdateStatus(o.id, "preparing")} size="sm" className="rounded-xl h-8 text-xs font-body bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm">Aceitar</Button>
+                    )}
+                    {o.status === "preparing" && (
+                      <Button onClick={() => handleUpdateStatus(o.id, "delivered")} size="sm" className="rounded-xl h-8 text-xs font-body bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-sm">Entregue</Button>
+                    )}
+                  </div>
+                </div>
               </div>
-              <span className="text-xs text-muted-foreground font-body">{o.time}</span>
-            </div>
-            <p className="font-display font-bold text-foreground text-sm">{o.client}</p>
-            <p className="text-xs text-muted-foreground font-body mt-0.5">{o.items}</p>
-            <p className="text-xs text-muted-foreground font-body mt-1 flex items-center gap-1"><MapPin className="h-3 w-3" /> {o.address}</p>
-            <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
-              <span className="font-body font-bold text-foreground">{o.total}</span>
-              <div className="flex gap-2">
-                <Button size="sm" variant="outline" className="rounded-xl h-8 text-xs font-body">Detalhes</Button>
-                <Button size="sm" className="rounded-xl h-8 text-xs font-body bg-gradient-to-r from-amber-500 to-orange-500 text-white">Aceitar</Button>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };

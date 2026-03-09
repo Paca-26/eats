@@ -13,11 +13,15 @@ import categoryTalho from "@/assets/category-talho.jpg";
 
 const CartPage = () => {
   const { items, updateQuantity, removeFromCart, clearCart, subtotal } = useCart();
-  const { user } = useAuth();
+  const { user, role } = useAuth();
+  const { demoUser, isDemoMode } = useDemoAuth();
   const navigate = useNavigate();
   const [deliveryAddress, setDeliveryAddress] = useState("");
   const [deliveryNotes, setDeliveryNotes] = useState("");
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+
+  const currentRole = isDemoMode ? demoUser?.role : role;
+  const isClient = currentRole === "client";
 
   const deliveryFee = items.length > 0 ? 1500 : 0;
   const total = subtotal + deliveryFee;
@@ -29,9 +33,14 @@ const CartPage = () => {
   }, {});
 
   const handlePlaceOrder = async () => {
-    if (!user) {
+    if (!user && !isDemoMode) {
       toast.error("Por favor, faça login para finalizar o pedido");
       navigate("/auth");
+      return;
+    }
+
+    if (!isClient) {
+      toast.error("Apenas clientes podem realizar pedidos. Por favor, crie uma conta de cliente.");
       return;
     }
 
@@ -54,7 +63,7 @@ const CartPage = () => {
         const { data: order, error: orderError } = await supabase
           .from("orders")
           .insert({
-            customer_id: user.id,
+            customer_id: user?.id || demoUser?.email || "demo-customer",
             store_id: storeId,
             status: "pending",
             delivery_address: deliveryAddress,
@@ -140,35 +149,54 @@ const CartPage = () => {
               ))}
             </div>
             <div className="space-y-6">
-              <div className="bg-card rounded-xl border border-border p-6 space-y-4">
+              <div className="bg-card rounded-xl border border-border p-6 space-y-4 shadow-sm">
                 <h3 className="font-display text-xl font-semibold text-card-foreground">Resumo</h3>
-                <div>
-                  <label className="text-sm font-medium text-foreground font-body">Endereço de Entrega</label>
-                  <Input value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.target.value)} placeholder="Ex: Rua da Samba, Talatona" className="mt-1" />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-foreground font-body">Notas (opcional)</label>
-                  <Input value={deliveryNotes} onChange={(e) => setDeliveryNotes(e.target.value)} placeholder="Ex: Apartamento 3B, tocar campainha" className="mt-1" />
-                </div>
-                <div className="space-y-2 pt-4 border-t border-border font-body text-sm">
-                  <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span className="text-card-foreground font-medium">{subtotal.toLocaleString("pt-AO")} Kz</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">Entrega (K)</span><span className="text-card-foreground font-medium">{deliveryFee.toLocaleString("pt-AO")} Kz</span></div>
-                  <div className="flex justify-between pt-2 border-t border-border text-base font-bold"><span>Total</span><span className="text-accent">{total.toLocaleString("pt-AO")} Kz</span></div>
-                </div>
-                <Button
-                  onClick={handlePlaceOrder}
-                  disabled={isPlacingOrder}
-                  className="w-full bg-accent text-accent-foreground hover:bg-accent/90 rounded-full py-6 font-semibold mt-4"
-                >
-                  {isPlacingOrder ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Processando...
-                    </>
-                  ) : (
-                    "Finalizar Pedido"
-                  )}
-                </Button>
+
+                {isClient ? (
+                  <>
+                    <div>
+                      <label className="text-sm font-medium text-foreground font-body">Endereço de Entrega</label>
+                      <Input value={deliveryAddress} onChange={(e) => setDeliveryAddress(e.target.value)} placeholder="Ex: Rua da Samba, Talatona" className="mt-1 rounded-xl" />
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-foreground font-body">Notas (opcional)</label>
+                      <Input value={deliveryNotes} onChange={(e) => setDeliveryNotes(e.target.value)} placeholder="Ex: Apartamento 3B, tocar campainha" className="mt-1 rounded-xl" />
+                    </div>
+                    <div className="space-y-2 pt-4 border-t border-border font-body text-sm">
+                      <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span className="text-card-foreground font-medium">{subtotal.toLocaleString("pt-AO")} Kz</span></div>
+                      <div className="flex justify-between"><span className="text-muted-foreground">Entrega (K)</span><span className="text-card-foreground font-medium">{deliveryFee.toLocaleString("pt-AO")} Kz</span></div>
+                      <div className="flex justify-between pt-2 border-t border-border text-base font-bold"><span>Total</span><span className="text-accent">{total.toLocaleString("pt-AO")} Kz</span></div>
+                    </div>
+                    <Button
+                      onClick={handlePlaceOrder}
+                      disabled={isPlacingOrder}
+                      className="w-full bg-accent text-accent-foreground hover:bg-accent/90 rounded-full py-6 font-semibold mt-4 shadow-md transition-all active:scale-95"
+                    >
+                      {isPlacingOrder ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Processando...
+                        </>
+                      ) : (
+                        "Finalizar Pedido"
+                      )}
+                    </Button>
+                  </>
+                ) : (
+                  <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-3">
+                    <p className="text-sm text-amber-800 font-body leading-relaxed text-center">
+                      {!user && !isDemoMode
+                        ? "Para continuar com o seu pedido, por favor crie uma conta ou faça login como cliente."
+                        : "Detectamos que a sua conta não é de cliente. Para fazer pedidos, precisa de uma conta de cliente."}
+                    </p>
+                    <Link to="/auth" className="block">
+                      <Button className="w-full bg-amber-500 hover:bg-amber-600 text-white rounded-full font-body font-bold py-5">
+                        Fazer Login / Criar Conta
+                      </Button>
+                    </Link>
+                  </div>
+                )}
+
                 <p className="text-xs text-muted-foreground font-body text-center">Pagamento por referência Multicaixa ou transferência</p>
               </div>
             </div>
