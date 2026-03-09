@@ -509,12 +509,13 @@ const VendorOrders = ({ storeId, onUpdate }: { storeId: string, onUpdate: () => 
       .eq("store_id", storeId)
       .order("created_at", { ascending: false });
 
-    if (activeFilter === "pending") query = query.eq("status", "pending");
-    if (activeFilter === "preparing") query = query.eq("status", "preparing");
-    if (activeFilter === "completed") query = query.in("status", ["delivered", "cancelled"]);
-
     const { data, error } = await query;
-    if (data) setOrders(data);
+    if (error) {
+      console.error("Error fetching vendor orders:", error);
+      toast.error("Erro ao carregar encomendas");
+    } else {
+      setOrders(data || []);
+    }
     setLoading(false);
   };
 
@@ -576,7 +577,7 @@ const VendorOrders = ({ storeId, onUpdate }: { storeId: string, onUpdate: () => 
                   </div>
                   <span className="text-xs text-muted-foreground font-body">{new Date(o.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                 </div>
-                <p className="font-display font-bold text-foreground text-sm">{(o.profiles as any)?.full_name || "Cliente"}</p>
+                <p className="font-display font-bold text-foreground text-sm">{o.profiles?.full_name || "Cliente"}</p>
                 <p className="text-xs text-muted-foreground font-body mt-1 flex items-center gap-1"><MapPin className="h-3 w-3" /> {o.delivery_address || "Não especificado"}</p>
                 <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
                   <span className="font-body font-bold text-foreground">{Number(o.total).toLocaleString("pt-AO")} Kz</span>
