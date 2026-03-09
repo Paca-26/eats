@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import DashboardShell from "@/components/DashboardShell";
 import BottomNav, { BottomNavItem } from "@/components/BottomNav";
@@ -361,6 +361,51 @@ const ClientProfile = ({ profile, onRefresh }: { profile: any; onRefresh: () => 
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [zones, setZones] = useState<any[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleAvatarUpload = async (e: any) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Selecione uma imagem válida");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Utilizador não autenticado");
+
+      const fileExt = file.name.split('.').pop();
+      const filePath = `avatars/${user.id}-${Math.random()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("store-images")
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from("store-images")
+        .getPublicUrl(filePath);
+
+      const { error: updateError } = await supabase
+        .from("profiles")
+        .update({ avatar_url: publicUrl })
+        .eq("id", user.id);
+
+      if (updateError) throw updateError;
+
+      toast.success("Foto de perfil atualizada!");
+      onRefresh();
+    } catch (error: any) {
+      console.error("Erro ao carregar avatar:", error);
+      toast.error("Erro ao carregar imagem");
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   const [editForm, setEditForm] = useState({
     full_name: profile?.full_name || "",
@@ -438,7 +483,18 @@ const ClientProfile = ({ profile, onRefresh }: { profile: any; onRefresh: () => 
                   <span>{initials}</span>
                 )}
               </div>
-              <button className="absolute bottom-0 right-0 p-2 rounded-xl bg-accent text-accent-foreground shadow-lg hover:scale-110 active:scale-90 transition-transform group-hover:rotate-12">
+              <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                accept="image/*"
+                onChange={handleAvatarUpload}
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isSaving}
+                className="absolute bottom-0 right-0 p-2 rounded-xl bg-accent text-accent-foreground shadow-lg hover:scale-110 active:scale-90 transition-transform group-hover:rotate-12 disabled:opacity-50"
+              >
                 <Camera className="h-4 w-4" />
               </button>
             </div>
