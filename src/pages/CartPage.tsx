@@ -1,11 +1,11 @@
 import { Link, useNavigate } from "react-router-dom";
-import Footer from "@/components/Footer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Trash2, Plus, Minus, ShoppingBag, ArrowLeft, Loader2 } from "lucide-react";
 import { useState } from "react";
 import { useCart } from "@/contexts/CartContext";
 import { useAuth } from "@/contexts/AuthContext";
+import { useDemoAuth } from "@/contexts/DemoAuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import categoryRestaurante from "@/assets/category-restaurante.jpg";
@@ -107,7 +107,7 @@ const CartPage = () => {
   };
 
   return (
-    <>
+    <div>
       <div className="container mx-auto px-4 py-8">
         <Link to="/" className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground text-sm font-body mb-6 transition-colors">
           <ArrowLeft className="h-4 w-4" /> Continuar a comprar
@@ -203,8 +203,7 @@ const CartPage = () => {
           </div>
         )}
       </div>
-      <Footer />
-    </>
+    </div >
   );
 };
 

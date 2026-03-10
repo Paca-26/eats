@@ -75,7 +75,7 @@ const HeroSection = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.45 }}>
 
-            <Link to="/categoria/restaurantes">
+            <Link to="/categorias">
               <Button className="bg-accent text-accent-foreground hover:bg-accent/90 rounded-full px-10 py-7 text-base font-semibold gap-2 shadow-lg shadow-accent/25 hover:shadow-xl hover:shadow-accent/30 transition-all duration-300 hover:scale-[1.02]">
                 Explorar Lojas <ArrowRight className="h-5 w-5" />
               </Button>

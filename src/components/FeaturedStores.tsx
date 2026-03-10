@@ -14,23 +14,37 @@ const FeaturedStores = () => {
     const fetchFeaturedStores = async () => {
       setLoading(true);
       try {
-        const { data, error } = await supabase
+        // Try to fetch stores marked as featured first
+        const { data: featuredData, error: featuredError } = await supabase
           .from("stores")
           .select("*, categories(name), zones(name)")
           .eq("is_active", true)
           .eq("is_featured", true)
           .limit(6);
 
-        if (error) throw error;
+        let data = featuredData || [];
 
-        const formatted = (data || []).map(store => ({
+        // If no featured stores found (either column doesn't exist yet or none are marked),
+        // fall back to showing all active stores
+        if (featuredError || data.length === 0) {
+          const { data: allData, error: allError } = await supabase
+            .from("stores")
+            .select("*, categories(name), zones(name)")
+            .eq("is_active", true)
+            .limit(6);
+
+          if (allError) throw allError;
+          data = allData || [];
+        }
+
+        const formatted = data.map(store => ({
           id: store.id,
           name: store.name,
           category: store.categories?.name || "Loja",
           rating: store.average_rating || 0,
-          deliveryTime: "30-45 min", // Default for now
+          deliveryTime: "30-45 min",
           zone: store.zones?.name || "Luanda",
-          featured: store.is_featured,
+          featured: store.is_featured ?? true,
           image: store.logo_url || store.cover_url || categoryRestaurante
         }));
 

@@ -5,7 +5,6 @@ import PromoBanner from "@/components/PromoBanner";
 import FeaturedStores from "@/components/FeaturedStores";
 import HowItWorks from "@/components/HowItWorks";
 import TestimonialsSection from "@/components/TestimonialsSection";
-import Footer from "@/components/Footer";
 
 const Index = () => {
   return (
@@ -17,7 +16,6 @@ const Index = () => {
       <FeaturedStores />
       <HowItWorks />
       <TestimonialsSection />
-      <Footer />
     </>
   );
 };
