@@ -512,7 +512,7 @@ const VendorOrders = ({ storeId, onUpdate }: { storeId: string, onUpdate: () => 
     const { data, error } = await query;
     if (error) {
       console.error("Error fetching vendor orders:", error);
-      toast.error("Erro ao carregar encomendas");
+      toast.error(`Erro ao carregar encomendas: ${error.message}`);
     } else {
       setOrders(data || []);
     }
