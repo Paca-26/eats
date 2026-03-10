@@ -19,7 +19,6 @@ const FeaturedStores = () => {
           .from("stores")
           .select("*, categories(name), zones(name)")
           .eq("is_active", true)
-          .eq("is_featured", true)
           .limit(6);
 
         let data = featuredData || [];
