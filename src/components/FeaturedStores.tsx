@@ -43,7 +43,7 @@ const FeaturedStores = () => {
           rating: store.average_rating || 0,
           deliveryTime: "30-45 min",
           zone: store.zones?.name || "Luanda",
-          featured: store.is_featured ?? true,
+          featured: true,
           image: store.logo_url || store.cover_url || categoryRestaurante
         }));
 
