@@ -275,7 +275,6 @@ const StorePage = () => {
         </div>
       )}
 
-      <Footer />
     </>
   );
 };
