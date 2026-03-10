@@ -19,7 +19,6 @@ const FeaturedStores = () => {
           .from("stores")
           .select("*, categories(name), zones(name)")
           .eq("is_active", true)
-          .eq("is_featured", true)
           .limit(6);
 
         let data = featuredData || [];
@@ -44,7 +43,7 @@ const FeaturedStores = () => {
           rating: store.average_rating || 0,
           deliveryTime: "30-45 min",
           zone: store.zones?.name || "Luanda",
-          featured: store.is_featured ?? true,
+          featured: true,
           image: store.logo_url || store.cover_url || categoryRestaurante
         }));
 

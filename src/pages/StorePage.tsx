@@ -1,5 +1,4 @@
 import { useParams, Link } from "react-router-dom";
-import Footer from "@/components/Footer";
 import { Star, Clock, MapPin, Phone, ArrowLeft, Plus, Minus, Heart, Share2, ShoppingBag, Truck, Award, ChefHat, Loader2, Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -276,7 +275,6 @@ const StorePage = () => {
         </div>
       )}
 
-      <Footer />
     </>
   );
 };
