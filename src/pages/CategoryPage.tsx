@@ -1,5 +1,4 @@
 import { useParams, Link } from "react-router-dom";
-import Footer from "@/components/Footer";
 import StoreCard from "@/components/StoreCard";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
@@ -102,7 +101,6 @@ const CategoryPage = () => {
           </div>
         )}
       </div>
-      <Footer />
     </>
   );
 };
