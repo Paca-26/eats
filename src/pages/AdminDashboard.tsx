@@ -1,13 +1,15 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import DashboardShell from "@/components/DashboardShell";
 import BottomNav, { BottomNavItem } from "@/components/BottomNav";
 import StatCard from "@/components/StatCard";
 import AnimatedTabContent from "@/components/AnimatedTabContent";
-import { Users, Store, Package, MapPin, ShieldCheck, TrendingUp, Settings, BarChart3, Bell, Search, ChevronRight, Star, Eye, CheckCircle2, XCircle, Clock, AlertCircle, Edit, Shield, Mail, Phone, Save, Trash2, LogOut } from "lucide-react";
+import { Users, Store, Package, MapPin, ShieldCheck, TrendingUp, Settings, BarChart3, Bell, Search, ChevronRight, Star, Eye, CheckCircle2, XCircle, Clock, AlertCircle, Edit, Shield, Mail, Phone, Save, Trash2, LogOut, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useDemoAuth } from "@/contexts/DemoAuthContext";
 import { useDisplayUser } from "@/hooks/useDisplayUser";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
 import heroAdmin from "@/assets/hero-admin.jpg";
 
 const navItems: BottomNavItem[] = [
@@ -48,6 +50,30 @@ const AdminDashboard = () => {
 
 const AdminHome = () => {
   const { name } = useDisplayUser();
+  const [stats, setStats] = useState<any>({
+    total_users: 0,
+    active_stores: 0,
+    pending_stores: 0,
+    orders_today: 0,
+    monthly_revenue: 0,
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const { data, error } = await supabase.rpc("get_admin_stats");
+        if (error) throw error;
+        if (data) setStats(data);
+      } catch (err) {
+        console.error("Error fetching admin stats:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchStats();
+  }, []);
+
   return (
     <div className="space-y-6">
       <div className="relative rounded-2xl overflow-hidden h-44">
@@ -56,53 +82,48 @@ const AdminHome = () => {
         <div className="relative z-10 p-6 h-full flex flex-col justify-end text-white">
           <p className="text-white/80 font-body text-sm">Administração</p>
           <h1 className="font-display text-2xl font-bold mt-1 flex items-center gap-2">{name} <ShieldCheck className="h-6 w-6" /></h1>
-          <div className="flex items-center gap-3 mt-1.5">
-            <span className="bg-white/20 backdrop-blur-sm text-white text-xs font-body px-2.5 py-0.5 rounded-full">Gestão central</span>
-            <span className="bg-purple-500/80 backdrop-blur-sm text-white text-xs font-body px-2.5 py-0.5 rounded-full flex items-center gap-1"><Users className="h-3 w-3" /> 128 users</span>
-            <span className="bg-emerald-500/80 backdrop-blur-sm text-white text-xs font-body px-2.5 py-0.5 rounded-full flex items-center gap-1"><Store className="h-3 w-3" /> 24 lojas</span>
+          <div className="flex items-center gap-3 mt-1.5 overflow-x-auto pb-1">
+            <span className="bg-white/20 backdrop-blur-sm text-white text-xs font-body px-2.5 py-0.5 rounded-full whitespace-nowrap">Gestão central</span>
+            <span className="bg-purple-500/80 backdrop-blur-sm text-white text-xs font-body px-2.5 py-0.5 rounded-full flex items-center gap-1 whitespace-nowrap"><Users className="h-3 w-3" /> {stats.total_users || 0} users</span>
+            <span className="bg-emerald-500/80 backdrop-blur-sm text-white text-xs font-body px-2.5 py-0.5 rounded-full flex items-center gap-1 whitespace-nowrap"><Store className="h-3 w-3" /> {stats.active_stores || 0} lojas</span>
           </div>
         </div>
       </div>
-      <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center gap-3">
-        <AlertCircle className="h-5 w-5 text-amber-600 shrink-0" />
-        <p className="text-sm font-body text-amber-800"><span className="font-semibold">3 lojas</span> aguardam aprovação. <span className="font-semibold cursor-pointer underline">Rever agora →</span></p>
-      </div>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <StatCard label="Utilizadores" value="128" icon={Users} trend="+12%" trendUp />
-        <StatCard label="Lojas Activas" value="24" icon={Store} trend="+3" trendUp />
-        <StatCard label="Encomendas Hoje" value="47" icon={Package} trend="+18%" trendUp />
-        <StatCard label="Receita Mensal" value="2.4M Kz" icon={TrendingUp} trend="+8%" trendUp />
-      </div>
+
+      {stats.pending_stores > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-center gap-3">
+          <AlertCircle className="h-5 w-5 text-amber-600 shrink-0" />
+          <p className="text-sm font-body text-amber-800"><span className="font-semibold">{stats.pending_stores} loja(s)</span> {stats.pending_stores === 1 ? 'aguarda aprovação.' : 'aguardam aprovação.'}</p>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex justify-center p-8"><Loader2 className="animate-spin text-purple-600 h-8 w-8" /></div>
+      ) : (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <StatCard label="Utilizadores" value={stats.total_users?.toString() || "0"} icon={Users} trend="+Nova" trendUp />
+          <StatCard label="Lojas Activas" value={stats.active_stores?.toString() || "0"} icon={Store} trend={`${stats.pending_stores} pnd`} />
+          <StatCard label="Encomendas Hoje" value={stats.orders_today?.toString() || "0"} icon={Package} trend="+Hoje" trendUp />
+          <StatCard label="Receita Mensal" value={`${Number(stats.monthly_revenue || 0).toLocaleString('pt-AO')} Kz`} icon={TrendingUp} trend="+0%" trendUp />
+        </div>
+      )}
+
       <div className="bg-card border border-border rounded-2xl overflow-hidden">
-        <div className="p-4 border-b border-border"><h2 className="font-display text-lg font-bold text-foreground">Actividade Recente</h2></div>
+        <div className="p-4 border-b border-border"><h2 className="font-display text-lg font-bold text-foreground">Acesso Rápido</h2></div>
         <div className="divide-y divide-border">
-          {[
-            { text: "Nova loja registada: Supermercado Kero", time: "há 2min", dot: "bg-emerald-500" },
-            { text: "Encomenda #1042 entregue com sucesso", time: "há 15min", dot: "bg-blue-500" },
-            { text: "Novo utilizador: João M. (Cliente)", time: "há 1h", dot: "bg-purple-500" },
-            { text: "Reclamação recebida: Encomenda #1038", time: "há 2h", dot: "bg-red-500" },
-            { text: "Loja 'Mercearia Central' actualizada", time: "há 3h", dot: "bg-amber-500" },
-          ].map((item, i) => (
-            <div key={i} className="flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors cursor-pointer">
-              <div className={`h-2.5 w-2.5 rounded-full ${item.dot} shrink-0`} />
-              <span className="text-sm font-body text-foreground flex-1">{item.text}</span>
-              <span className="text-xs text-muted-foreground font-body">{item.time}</span>
-            </div>
-          ))}
+          <div className="flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors cursor-pointer">
+            <div className={`h-2.5 w-2.5 rounded-full bg-blue-500 shrink-0`} />
+            <span className="text-sm font-body text-foreground flex-1">Verifique o menu Lojas para aprovar novas adesões.</span>
+            <span className="text-xs text-muted-foreground font-body">Dica</span>
+          </div>
+          <div className="flex items-center gap-3 px-4 py-3 hover:bg-muted/50 transition-colors cursor-pointer">
+            <div className={`h-2.5 w-2.5 rounded-full bg-emerald-500 shrink-0`} />
+            <span className="text-sm font-body text-foreground flex-1">Configure as taxas de entrega em Definições.</span>
+            <span className="text-xs text-muted-foreground font-body">Dica</span>
+          </div>
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div className="bg-card border border-border rounded-2xl p-4">
-          <Eye className="h-5 w-5 text-accent mb-2" />
-          <span className="font-display font-bold text-foreground text-2xl block">1.2K</span>
-          <span className="text-xs text-muted-foreground font-body">Visitas hoje</span>
-        </div>
-        <div className="bg-card border border-border rounded-2xl p-4">
-          <Star className="h-5 w-5 text-accent mb-2" />
-          <span className="font-display font-bold text-foreground text-2xl block">4.6</span>
-          <span className="text-xs text-muted-foreground font-body">Avaliação média</span>
-        </div>
-      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {[
           { title: "Zonas de Entrega", desc: "Configurar zonas e taxas de delivery.", icon: MapPin },
@@ -126,15 +147,67 @@ const AdminHome = () => {
 
 const AdminStores = () => {
   const [filter, setFilter] = useState("all");
-  const stores = [
-    { name: "MMM' All4You", category: "Restaurante", status: "Activa", statusColor: "bg-emerald-100 text-emerald-700", rating: 4.8, orders: 156, revenue: "450K Kz" },
-    { name: "Super Luanda", category: "Supermercado", status: "Activa", statusColor: "bg-emerald-100 text-emerald-700", rating: 4.6, orders: 89, revenue: "320K Kz" },
-    { name: "Talho Premium", category: "Talho", status: "Activa", statusColor: "bg-emerald-100 text-emerald-700", rating: 4.9, orders: 67, revenue: "280K Kz" },
-    { name: "Peixaria Atlântico", category: "Peixaria", status: "Activa", statusColor: "bg-emerald-100 text-emerald-700", rating: 4.7, orders: 45, revenue: "190K Kz" },
-    { name: "Novo Mercado", category: "Mercearia", status: "Pendente", statusColor: "bg-amber-100 text-amber-700", rating: 0, orders: 0, revenue: "0 Kz" },
-    { name: "Cantina Boa", category: "Restaurante", status: "Pendente", statusColor: "bg-amber-100 text-amber-700", rating: 0, orders: 0, revenue: "0 Kz" },
-    { name: "Mini Preço", category: "Supermercado", status: "Suspensa", statusColor: "bg-red-100 text-red-700", rating: 3.2, orders: 12, revenue: "45K Kz" },
-  ];
+  const [stores, setStores] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  const fetchStores = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('stores')
+        .select(`
+          *,
+          categories(name),
+          profiles:owner_id(full_name, phone)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setStores(data || []);
+    } catch (err: any) {
+      console.error("Erro ao carregar lojas:", err);
+      toast({ title: "Erro", description: err.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchStores();
+  }, []);
+
+  const handleUpdateStatus = async (id: string, active: boolean) => {
+    try {
+      const { error } = await supabase.from('stores').update({ is_active: active }).eq('id', id);
+      if (error) throw error;
+      toast({ title: "Sucesso", description: `Loja ${active ? 'aprovada/ativada' : 'suspensa'} com sucesso.` });
+      fetchStores();
+    } catch (err: any) {
+      console.error("Erro ao atualizar loja:", err);
+      toast({ title: "Erro", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleDeleteStore = async (id: string, name: string) => {
+    if (!confirm(`Tem certeza que deseja apagar a loja ${name}? Isso apagará todos os produtos associados.`)) return;
+    try {
+      const { error } = await supabase.from('stores').delete().eq('id', id);
+      if (error) throw error;
+      toast({ title: "Sucesso", description: "Loja apagada com sucesso." });
+      fetchStores();
+    } catch (err: any) {
+      console.error("Erro ao apagar loja:", err);
+      toast({ title: "Erro", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const filteredStores = stores.filter(s => {
+    if (filter === "all") return true;
+    if (filter === "active") return s.is_active === true;
+    if (filter === "pending" || filter === "suspended") return s.is_active === false;
+    return true;
+  });
 
   return (
     <div className="space-y-5">
@@ -142,95 +215,271 @@ const AdminStores = () => {
         <h2 className="font-display text-2xl font-bold text-foreground">Gestão de Lojas</h2>
         <span className="text-sm text-muted-foreground font-body">{stores.length} lojas</span>
       </div>
-      <div className="flex gap-2 overflow-x-auto">
-        {[["all", "Todas"], ["active", "Activas"], ["pending", "Pendentes"], ["suspended", "Suspensas"]].map(([k, v]) => (
-          <button key={k} onClick={() => setFilter(k)} className={`px-3 py-1.5 rounded-full text-xs font-body font-medium whitespace-nowrap transition-all ${filter === k ? "bg-purple-600 text-white" : "bg-muted text-muted-foreground"}`}>{v}</button>
+      <div className="flex gap-2 overflow-x-auto pb-2">
+        {[["all", "Todas"], ["active", "Activas"], ["suspended", "Inativas / Pendentes"]].map(([k, v]) => (
+          <button key={k} onClick={() => setFilter(k)} className={`px-4 py-1.5 rounded-full text-xs font-body font-medium whitespace-nowrap transition-all ${filter === k ? "bg-purple-600 text-white shadow-sm" : "bg-card border border-border text-muted-foreground hover:bg-muted"}`}>{v}</button>
         ))}
       </div>
-      <div className="space-y-2">
-        {stores.map((s, i) => (
-          <div key={i} className="bg-card border border-border rounded-2xl p-4 hover:shadow-md transition-all cursor-pointer">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-400 to-violet-500 flex items-center justify-center text-white text-sm font-bold">{s.name[0]}</div>
-                <div>
-                  <span className="font-display font-bold text-foreground text-sm block">{s.name}</span>
-                  <span className="text-[10px] text-muted-foreground font-body">{s.category}</span>
+
+      {loading ? (
+        <div className="flex justify-center py-10"><Loader2 className="animate-spin text-purple-600 h-8 w-8" /></div>
+      ) : filteredStores.length === 0 ? (
+        <div className="text-center py-10 text-muted-foreground">Nenhuma loja encontrada.</div>
+      ) : (
+        <div className="space-y-3">
+          {filteredStores.map((s) => (
+            <div key={s.id} className="bg-card border border-border rounded-2xl p-4 hover:shadow-md transition-all cursor-pointer">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-400 to-violet-500 flex items-center justify-center text-white text-sm font-bold shrink-0">
+                    {s.logo_url ? <img src={s.logo_url} alt={s.name} className="w-full h-full object-cover rounded-xl" /> : s.name.substring(0, 2).toUpperCase()}
+                  </div>
+                  <div>
+                    <span className="font-display font-bold text-foreground text-sm block">{s.name}</span>
+                    <span className="text-[10px] text-muted-foreground font-body">{s.categories?.name || "Sem categoria"}</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={`text-[10px] font-body font-semibold px-2 py-0.5 rounded-full ${s.is_active ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
+                    {s.is_active ? "Activa" : "Inativa/Pendente"}
+                  </span>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => handleDeleteStore(s.id, s.name)}>
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
                 </div>
               </div>
-              <span className={`text-[10px] font-body font-semibold px-2 py-0.5 rounded-full ${s.statusColor}`}>{s.status}</span>
-            </div>
-            <div className="flex items-center gap-4 text-xs text-muted-foreground font-body mt-2">
-              {s.rating > 0 && <span className="flex items-center gap-1"><Star className="h-3 w-3 fill-amber-400 text-amber-400" /> {s.rating}</span>}
-              <span>{s.orders} pedidos</span>
-              <span>{s.revenue}</span>
-            </div>
-            {s.status === "Pendente" && (
-              <div className="flex gap-2 mt-3 pt-3 border-t border-border">
-                <Button size="sm" className="rounded-xl h-8 text-xs font-body bg-emerald-500 text-white flex-1 gap-1"><CheckCircle2 className="h-3 w-3" /> Aprovar</Button>
-                <Button size="sm" variant="outline" className="rounded-xl h-8 text-xs font-body text-destructive flex-1 gap-1"><XCircle className="h-3 w-3" /> Rejeitar</Button>
+
+              <div className="grid grid-cols-2 gap-1 text-xs text-muted-foreground font-body mt-3 pt-3 border-t border-border">
+                <p>Criado por: <span className="text-foreground font-medium">{s.profiles?.full_name || 'Desconhecido'}</span></p>
+                <p>Contacto: <span className="text-foreground font-medium">{s.phone || s.profiles?.phone || 'N/D'}</span></p>
+                <p>Comissão: <span className="text-foreground font-medium">{s.commission_pct || 10}%</span></p>
+                {s.average_rating > 0 && <p className="flex items-center gap-1"><Star className="h-3 w-3 fill-amber-400 text-amber-400" /> {s.average_rating}</p>}
               </div>
-            )}
-          </div>
-        ))}
-      </div>
+
+              <div className="flex gap-2 mt-3 pt-3 border-t border-border">
+                {s.is_active ? (
+                  <Button size="sm" variant="outline" className="rounded-xl h-8 text-xs font-body text-amber-600 border-amber-200 hover:bg-amber-50 flex-1 gap-1" onClick={() => handleUpdateStatus(s.id, false)}>
+                    <XCircle className="h-3 w-3" /> Suspender Loja
+                  </Button>
+                ) : (
+                  <Button size="sm" className="rounded-xl h-8 text-xs font-body bg-emerald-500 hover:bg-emerald-600 text-white flex-1 gap-1" onClick={() => handleUpdateStatus(s.id, true)}>
+                    <CheckCircle2 className="h-3 w-3" /> Aprovar / Ativar
+                  </Button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
 
 const AdminOrders = () => {
   const [filter, setFilter] = useState("all");
-  const orders = [
-    { id: "#1045", store: "MMM' All4You", client: "Maria Silva", total: "4.500 Kz", status: "Em preparação", statusColor: "bg-amber-100 text-amber-700", date: "Hoje, 14:30", driver: "Pedro E." },
-    { id: "#1044", store: "Peixaria Atlântico", client: "João Costa", total: "12.000 Kz", status: "A caminho", statusColor: "bg-blue-100 text-blue-700", date: "Hoje, 11:20", driver: "Carlos M." },
-    { id: "#1043", store: "Super Luanda", client: "Ana Lopes", total: "8.200 Kz", status: "Entregue", statusColor: "bg-emerald-100 text-emerald-700", date: "Hoje, 10:00", driver: "Pedro E." },
-    { id: "#1042", store: "Talho Premium", client: "Sofia R.", total: "15.800 Kz", status: "Entregue", statusColor: "bg-emerald-100 text-emerald-700", date: "Ontem", driver: "Carlos M." },
-    { id: "#1038", store: "Mercearia Central", client: "Luís A.", total: "3.200 Kz", status: "Reclamação", statusColor: "bg-red-100 text-red-700", date: "Ontem", driver: "Pedro E." },
-  ];
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [totalOrders, setTotalOrders] = useState(0);
+  const ITEMS_PER_PAGE = 5;
+  const { toast } = useToast();
+
+  const fetchOrders = async (currentPage: number, currentFilter: string) => {
+    setLoading(true);
+    try {
+      let query = supabase
+        .from('orders')
+        .select(`
+          *,
+          stores(name),
+          profiles:customer_id(full_name, phone)
+        `, { count: 'exact' });
+
+      if (currentFilter !== "all") {
+        if (currentFilter === "active") {
+          query = query.in('status', ['pending', 'confirmed', 'preparing', 'ready', 'delivering']);
+        } else if (currentFilter === "delivered") {
+          query = query.eq('status', 'delivered');
+        } else if (currentFilter === "issues") {
+          query = query.eq('status', 'cancelled');
+        }
+      }
+
+      const from = (currentPage - 1) * ITEMS_PER_PAGE;
+      const to = from + ITEMS_PER_PAGE - 1;
+
+      const { data, count, error } = await query
+        .order('created_at', { ascending: false })
+        .range(from, to);
+
+      if (error) throw error;
+
+      setOrders(data || []);
+      setTotalOrders(count || 0);
+    } catch (err: any) {
+      console.error("Erro ao carregar encomendas:", err);
+      toast({ title: "Erro", description: err.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchOrders(page, filter);
+  }, [page, filter]);
+
+  const handleFilterChange = (newFilter: string) => {
+    setFilter(newFilter);
+    setPage(1); // Reset page on filter change
+  };
+
+  const totalPages = Math.ceil(totalOrders / ITEMS_PER_PAGE);
+
+  const statusColors: Record<string, string> = {
+    pending: "bg-amber-100 text-amber-700",
+    confirmed: "bg-blue-100 text-blue-700",
+    preparing: "bg-purple-100 text-purple-700",
+    ready: "bg-emerald-100 text-emerald-700",
+    delivering: "bg-blue-100 text-blue-700",
+    delivered: "bg-emerald-100 text-emerald-700",
+    cancelled: "bg-red-100 text-red-700",
+  };
+
+  const statusLabels: Record<string, string> = {
+    pending: "Pendente",
+    confirmed: "Confirmada",
+    preparing: "A preparar",
+    ready: "Pronto a recolher",
+    delivering: "A caminho",
+    delivered: "Entregue",
+    cancelled: "Cancelada",
+  };
 
   return (
     <div className="space-y-5">
-      <h2 className="font-display text-2xl font-bold text-foreground">Todas as Encomendas</h2>
-      <div className="flex gap-2 overflow-x-auto">
-        {[["all", "Todas"], ["active", "Activas"], ["delivered", "Entregues"], ["issues", "Problemas"]].map(([k, v]) => (
-          <button key={k} onClick={() => setFilter(k)} className={`px-3 py-1.5 rounded-full text-xs font-body font-medium whitespace-nowrap transition-all ${filter === k ? "bg-purple-600 text-white" : "bg-muted text-muted-foreground"}`}>{v}</button>
+      <div className="flex items-center justify-between">
+        <h2 className="font-display text-2xl font-bold text-foreground">Todas Encomendas</h2>
+        <span className="text-sm text-muted-foreground font-body">{totalOrders} no total</span>
+      </div>
+      <div className="flex gap-2 overflow-x-auto pb-2">
+        {[["all", "Todas"], ["active", "Ativas"], ["delivered", "Entregues"], ["issues", "Canceladas"]].map(([k, v]) => (
+          <button key={k} onClick={() => handleFilterChange(k)} className={`px-4 py-1.5 rounded-full text-xs font-body font-medium whitespace-nowrap transition-all ${filter === k ? "bg-purple-600 text-white shadow-sm" : "bg-card border border-border text-muted-foreground hover:bg-muted"}`}>{v}</button>
         ))}
       </div>
-      <div className="space-y-2">
-        {orders.map((o) => (
-          <div key={o.id} className="bg-card border border-border rounded-2xl p-4 hover:shadow-md transition-all cursor-pointer">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <span className="font-body font-bold text-foreground text-sm">{o.id}</span>
-                <span className={`text-[10px] font-body font-semibold px-2 py-0.5 rounded-full ${o.statusColor}`}>{o.status}</span>
+
+      {loading ? (
+        <div className="flex justify-center py-10"><Loader2 className="animate-spin text-purple-600 h-8 w-8" /></div>
+      ) : orders.length === 0 ? (
+        <div className="text-center py-10 text-muted-foreground">Nenhuma encomenda encontrada.</div>
+      ) : (
+        <>
+          <div className="space-y-3">
+            {orders.map((o) => (
+              <div key={o.id} className="bg-card border border-border rounded-2xl p-4 hover:shadow-md transition-all cursor-pointer">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <span className="font-body font-bold text-foreground text-sm">#{o.id.substring(0, 6).toUpperCase()}</span>
+                    <span className={`text-[10px] font-body font-semibold px-2 py-0.5 rounded-full ${statusColors[o.status] || "bg-gray-100"}`}>{statusLabels[o.status] || o.status}</span>
+                  </div>
+                  <span className="text-xs text-muted-foreground font-body">
+                    {new Date(o.created_at).toLocaleDateString('pt-AO')} {new Date(o.created_at).toLocaleTimeString('pt-AO', { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-xs font-body">
+                  <p className="text-muted-foreground">Loja: <span className="text-foreground font-medium">{o.stores?.name || 'Desconhecida'}</span></p>
+                  <p className="text-muted-foreground">Cliente: <span className="text-foreground font-medium">{o.profiles?.full_name || 'Desconhecido'}</span></p>
+                  <p className="text-muted-foreground">Tel Cliente: <span className="text-foreground font-medium">{o.profiles?.phone || 'N/D'}</span></p>
+                  <p className="text-muted-foreground">Total: <span className="text-purple-600 font-bold">{Number(o.total).toLocaleString('pt-AO')} Kz</span></p>
+                </div>
               </div>
-              <span className="text-xs text-muted-foreground font-body">{o.date}</span>
-            </div>
-            <div className="grid grid-cols-2 gap-1 text-xs font-body">
-              <p className="text-muted-foreground">Loja: <span className="text-foreground font-semibold">{o.store}</span></p>
-              <p className="text-muted-foreground">Cliente: <span className="text-foreground font-semibold">{o.client}</span></p>
-              <p className="text-muted-foreground">Motorista: <span className="text-foreground font-semibold">{o.driver}</span></p>
-              <p className="text-muted-foreground">Total: <span className="text-foreground font-semibold">{o.total}</span></p>
-            </div>
+            ))}
           </div>
-        ))}
-      </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 mt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page === 1}
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+              >
+                Anterior
+              </Button>
+              <span className="text-sm text-muted-foreground font-body">
+                Pág {page} de {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={page >= totalPages}
+                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              >
+                Próxima
+              </Button>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 };
 
 const AdminUsers = () => {
   const [filter, setFilter] = useState("all");
-  const users = [
-    { name: "Maria Silva", email: "maria@demo.ao", role: "Cliente", status: "Activo", orders: 12, joined: "Jan 2026" },
-    { name: "João Costa", email: "joao@demo.ao", role: "Vendedor", status: "Activo", orders: 0, joined: "Dez 2025" },
-    { name: "Pedro Entrega", email: "pedro@demo.ao", role: "Motorista", status: "Activo", orders: 156, joined: "Nov 2025" },
-    { name: "Ana Lopes", email: "ana@demo.ao", role: "Cliente", status: "Activo", orders: 5, joined: "Fev 2026" },
-    { name: "Carlos Mendes", email: "carlos@demo.ao", role: "Motorista", status: "Inactivo", orders: 34, joined: "Out 2025" },
-    { name: "Sofia Ribeiro", email: "sofia@demo.ao", role: "Vendedor", status: "Pendente", orders: 0, joined: "Fev 2026" },
-  ];
-  const roleColors: Record<string, string> = { Cliente: "bg-blue-100 text-blue-700", Vendedor: "bg-amber-100 text-amber-700", Motorista: "bg-emerald-100 text-emerald-700" };
-  const statusColors: Record<string, string> = { Activo: "bg-emerald-100 text-emerald-700", Inactivo: "bg-muted text-muted-foreground", Pendente: "bg-amber-100 text-amber-700" };
+  const [users, setUsers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const { toast } = useToast();
+
+  const fetchUsers = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.rpc("get_admin_users");
+      if (error) throw error;
+      setUsers(data || []);
+    } catch (err: any) {
+      console.error("Erro ao carregar utilizadores:", err);
+      toast({ title: "Erro", description: err.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const handleDelete = async (userId: string, name: string) => {
+    if (!confirm(`Tem certeza que deseja apagar o utilizador ${name}? Esta ação não pode ser desfeita.`)) return;
+
+    try {
+      const { error } = await supabase.rpc("delete_user_admin", { target_user_id: userId });
+      if (error) throw error;
+      toast({ title: "Sucesso", description: "Utilizador apagado com sucesso." });
+      fetchUsers();
+    } catch (err: any) {
+      console.error("Erro ao apagar:", err);
+      toast({ title: "Erro na exclusão", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const filteredUsers = users.filter((u) => {
+    const matchesFilter =
+      filter === "all" ? true :
+        filter === "clients" ? u.role === "client" :
+          filter === "stores" ? u.role === "store" :
+            filter === "logistics" ? u.role === "logistics" :
+              u.role === filter; // fallback para roles exatos como "admin"
+
+    const matchesSearch = search === "" ||
+      (u.full_name?.toLowerCase().includes(search.toLowerCase()) ||
+        u.email?.toLowerCase().includes(search.toLowerCase()));
+
+    return matchesFilter && matchesSearch;
+  });
+
+  const roleLabels: Record<string, string> = { client: "Cliente", store: "Gestor Loja", logistics: "Logística", admin: "Administrador" };
+  const roleColors: Record<string, string> = { client: "bg-blue-100 text-blue-700", store: "bg-amber-100 text-amber-700", logistics: "bg-emerald-100 text-emerald-700", admin: "bg-purple-100 text-purple-700" };
 
   return (
     <div className="space-y-5">
@@ -240,30 +489,53 @@ const AdminUsers = () => {
       </div>
       <div className="relative">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <input type="text" placeholder="Pesquisar utilizadores..." className="w-full pl-11 pr-4 py-3 rounded-2xl bg-card border border-border text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500 font-body" />
+        <input
+          type="text"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Pesquisar por nome ou email..."
+          className="w-full pl-11 pr-4 py-3 rounded-2xl bg-card border border-border text-foreground text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-purple-500 font-body"
+        />
       </div>
-      <div className="flex gap-2">
-        {[["all", "Todos"], ["clients", "Clientes"], ["vendors", "Vendedores"], ["drivers", "Motoristas"]].map(([k, v]) => (
-          <button key={k} onClick={() => setFilter(k)} className={`px-3 py-1.5 rounded-full text-xs font-body font-medium whitespace-nowrap transition-all ${filter === k ? "bg-purple-600 text-white" : "bg-muted text-muted-foreground"}`}>{v}</button>
+      <div className="flex gap-2 overflow-x-auto pb-2">
+        {[["all", "Todos"], ["clients", "Clientes"], ["stores", "Lojas"], ["logistics", "Logística"], ["admin", "Admins"]].map(([k, v]) => (
+          <button key={k} onClick={() => setFilter(k)} className={`px-4 py-1.5 rounded-full text-xs font-body font-medium whitespace-nowrap transition-all ${filter === k ? "bg-purple-600 text-white shadow-sm" : "bg-card border border-border text-muted-foreground hover:bg-muted"}`}>{v}</button>
         ))}
       </div>
-      <div className="space-y-2">
-        {users.map((u, i) => (
-          <div key={i} className="bg-card border border-border rounded-2xl p-4 hover:shadow-md transition-all cursor-pointer flex items-center gap-4">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-violet-500 flex items-center justify-center text-white text-sm font-bold shrink-0">
-              {u.name.split(" ").map(n => n[0]).join("")}
+
+      {loading ? (
+        <div className="flex justify-center py-10"><Loader2 className="animate-spin text-purple-600 h-8 w-8" /></div>
+      ) : filteredUsers.length === 0 ? (
+        <div className="text-center py-10 text-muted-foreground">Nenhum utilizador encontrado.</div>
+      ) : (
+        <div className="space-y-3">
+          {filteredUsers.map((u) => (
+            <div key={u.id} className="bg-card border border-border rounded-2xl p-4 hover:shadow-md transition-all flex flex-col sm:flex-row gap-4 sm:items-center">
+              <div className="flex items-center gap-4 flex-1">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-400 to-violet-500 flex items-center justify-center text-white text-lg font-bold shrink-0">
+                  {u.full_name ? u.full_name.substring(0, 2).toUpperCase() : u.email.substring(0, 2).toUpperCase()}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <span className="font-display font-bold text-foreground text-sm block truncate">{u.full_name || 'Sem Nome'}</span>
+                  <span className="text-xs text-muted-foreground font-body block truncate">{u.email}</span>
+                  {u.phone && <span className="text-xs text-muted-foreground font-body block truncate mt-0.5">{u.phone}</span>}
+                </div>
+              </div>
+              <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 border-t sm:border-t-0 pt-3 sm:pt-0 border-border">
+                <div className="flex flex-col items-start sm:items-end gap-1">
+                  <span className={`text-[10px] font-body font-semibold px-2 py-0.5 rounded-full ${roleColors[u.role] || "bg-gray-100"}`}>{roleLabels[u.role] || u.role}</span>
+                  <span className="text-[10px] text-muted-foreground font-body">{u.total_orders || 0} compras</span>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => handleDelete(u.id, u.full_name || u.email)}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <span className="font-body font-bold text-foreground text-sm block">{u.name}</span>
-              <span className="text-xs text-muted-foreground font-body">{u.email}</span>
-            </div>
-            <div className="flex flex-col items-end gap-1 shrink-0">
-              <span className={`text-[10px] font-body font-semibold px-2 py-0.5 rounded-full ${roleColors[u.role]}`}>{u.role}</span>
-              <span className={`text-[10px] font-body font-semibold px-2 py-0.5 rounded-full ${statusColors[u.status]}`}>{u.status}</span>
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
