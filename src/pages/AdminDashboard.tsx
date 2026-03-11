@@ -149,6 +149,7 @@ const AdminStores = () => {
   const [filter, setFilter] = useState("all");
   const [stores, setStores] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedStoreForProducts, setSelectedStoreForProducts] = useState<{ id: string, name: string } | null>(null);
   const { toast } = useToast();
 
   const fetchStores = async () => {
@@ -276,6 +277,9 @@ const AdminStores = () => {
               </div>
 
               <div className="flex gap-2 mt-3 pt-3 border-t border-border">
+                <Button size="sm" variant="outline" className="rounded-xl h-8 text-xs font-body text-purple-600 border-purple-200 hover:bg-purple-50 flex-1 gap-1" onClick={() => setSelectedStoreForProducts({ id: s.id, name: s.name })}>
+                  <Package className="h-3 w-3" /> Ver Produtos
+                </Button>
                 {s.is_active ? (
                   <Button size="sm" variant="outline" className="rounded-xl h-8 text-xs font-body text-amber-600 border-amber-200 hover:bg-amber-50 flex-1 gap-1" onClick={() => handleUpdateStatus(s.id, false)}>
                     <XCircle className="h-3 w-3" /> Suspender Loja
@@ -290,6 +294,114 @@ const AdminStores = () => {
           ))}
         </div>
       )}
+
+      {selectedStoreForProducts && (
+        <AdminStoreProducts
+          store={selectedStoreForProducts}
+          onClose={() => setSelectedStoreForProducts(null)}
+        />
+      )}
+    </div>
+  );
+};
+
+const AdminStoreProducts = ({ store, onClose }: { store: { id: string, name: string }, onClose: () => void }) => {
+  const [products, setProducts] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
+
+  const fetchProducts = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('store_id', store.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setProducts(data || []);
+    } catch (err: any) {
+      console.error("Erro ao carregar produtos da loja:", err);
+      toast({ title: "Erro", description: err.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchProducts();
+  }, [store.id]);
+
+  const handleUpdateFee = async (productId: string, fee: number) => {
+    try {
+      const { error } = await supabase
+        .from('products')
+        .update({ admin_fee: fee })
+        .eq('id', productId);
+
+      if (error) throw error;
+      toast({ title: "Sucesso", description: "Taxa atualizada com sucesso." });
+      setProducts(products.map(p => p.id === productId ? { ...p, admin_fee: fee } : p));
+    } catch (err: any) {
+      console.error("Erro ao atualizar taxa:", err);
+      toast({ title: "Erro", description: err.message, variant: "destructive" });
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4 sm:p-6">
+      <div className="bg-card border border-border rounded-2xl w-full max-w-3xl max-h-[85vh] flex flex-col shadow-lg overflow-hidden animate-in fade-in zoom-in-95">
+        <div className="p-4 border-b border-border flex items-center justify-between bg-muted/30">
+          <div>
+            <h3 className="font-display font-bold text-lg text-foreground">Produtos da Loja</h3>
+            <p className="text-sm text-muted-foreground font-body">{store.name}</p>
+          </div>
+          <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full h-8 w-8 hover:bg-muted">
+            <XCircle className="h-5 w-5 text-muted-foreground" />
+          </Button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4">
+          {loading ? (
+            <div className="flex justify-center py-10"><Loader2 className="animate-spin text-purple-600 h-8 w-8" /></div>
+          ) : products.length === 0 ? (
+            <div className="text-center py-10 text-muted-foreground">Esta loja ainda não tem produtos.</div>
+          ) : (
+            <div className="space-y-3">
+              {products.map(p => (
+                <div key={p.id} className="bg-card border border-border rounded-xl p-3 flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center overflow-hidden shrink-0">
+                    {p.image_url ? (
+                      <img src={p.image_url} alt={p.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <Package className="h-5 w-5 text-muted-foreground" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-body font-bold text-sm text-foreground truncate">{p.name}</h4>
+                    <p className="text-xs text-muted-foreground font-body">{Number(p.price).toLocaleString('pt-AO')} Kz</p>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex flex-col items-end">
+                      <label className="text-[10px] text-muted-foreground font-body mb-1">Taxa Admin (Kz)</label>
+                      <input
+                        type="number"
+                        defaultValue={p.admin_fee || 0}
+                        onBlur={(e) => {
+                          const val = Number(e.target.value);
+                          if (val !== (p.admin_fee || 0)) handleUpdateFee(p.id, val);
+                        }}
+                        className="w-24 px-2 py-1 text-xs rounded-md border border-border bg-background focus:outline-none focus:ring-1 focus:ring-purple-500 font-body text-right"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 };
