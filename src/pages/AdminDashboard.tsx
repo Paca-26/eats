@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { useDemoAuth } from "@/contexts/DemoAuthContext";
 import { useDisplayUser } from "@/hooks/useDisplayUser";
 import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import heroAdmin from "@/assets/hero-admin.jpg";
 
 const navItems: BottomNavItem[] = [
@@ -154,17 +154,36 @@ const AdminStores = () => {
   const fetchStores = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      // Step 1: fetch stores with categories
+      const { data: storesData, error: storesError } = await supabase
         .from('stores')
-        .select(`
-          *,
-          categories(name),
-          profiles:owner_id(full_name, phone)
-        `)
+        .select('*, categories(name)')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setStores(data || []);
+      if (storesError) throw storesError;
+
+      // Step 2: fetch profiles for each owner (stores.owner_id -> profiles.id)
+      const ownerIds = [...new Set((storesData || []).map((s: any) => s.owner_id))];
+      let profilesMap: Record<string, any> = {};
+
+      if (ownerIds.length > 0) {
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('id, full_name, phone')
+          .in('id', ownerIds);
+
+        (profilesData || []).forEach((p: any) => {
+          profilesMap[p.id] = p;
+        });
+      }
+
+      // Merge profiles into stores
+      const merged = (storesData || []).map((s: any) => ({
+        ...s,
+        owner_profile: profilesMap[s.owner_id] || null,
+      }));
+
+      setStores(merged);
     } catch (err: any) {
       console.error("Erro ao carregar lojas:", err);
       toast({ title: "Erro", description: err.message, variant: "destructive" });
@@ -250,8 +269,8 @@ const AdminStores = () => {
               </div>
 
               <div className="grid grid-cols-2 gap-1 text-xs text-muted-foreground font-body mt-3 pt-3 border-t border-border">
-                <p>Criado por: <span className="text-foreground font-medium">{s.profiles?.full_name || 'Desconhecido'}</span></p>
-                <p>Contacto: <span className="text-foreground font-medium">{s.phone || s.profiles?.phone || 'N/D'}</span></p>
+                <p>Criado por: <span className="text-foreground font-medium">{s.owner_profile?.full_name || 'Desconhecido'}</span></p>
+                <p>Contacto: <span className="text-foreground font-medium">{s.phone || s.owner_profile?.phone || 'N/D'}</span></p>
                 <p>Comissão: <span className="text-foreground font-medium">{s.commission_pct || 10}%</span></p>
                 {s.average_rating > 0 && <p className="flex items-center gap-1"><Star className="h-3 w-3 fill-amber-400 text-amber-400" /> {s.average_rating}</p>}
               </div>
