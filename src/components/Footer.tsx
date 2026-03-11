@@ -21,19 +21,11 @@ const Footer = () => {
             <ul className="space-y-2 text-sm text-primary-foreground/70 font-body">
               <li><Link to="/categorias" className="hover:text-accent transition-colors">Categorias</Link></li>
               <li><Link to="/pesquisar" className="hover:text-accent transition-colors">Lojas</Link></li>
-              <li><Link to="/categoria/restaurantes" className="hover:text-accent transition-colors">Restaurantes</Link></li>
+              
               <li><Link to="/promocoes" className="hover:text-accent transition-colors">Promoções</Link></li>
             </ul>
           </div>
 
-          <div>
-            <h4 className="font-display font-semibold mb-4">Para Lojas</h4>
-            <ul className="space-y-2 text-sm text-primary-foreground/70 font-body">
-              <li><Link to="/vendedor" className="hover:text-accent transition-colors">Vender na Plataforma</Link></li>
-              <li><Link to="/vendedor" className="hover:text-accent transition-colors">Painel do Vendedor</Link></li>
-              <li><Link to="/vendedor" className="hover:text-accent transition-colors">Comissões</Link></li>
-            </ul>
-          </div>
 
           <div>
             <h4 className="font-display font-semibold mb-4">Suporte</h4>
