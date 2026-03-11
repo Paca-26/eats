@@ -26,14 +26,6 @@ const Footer = () => {
             </ul>
           </div>
 
-          <div>
-            <h4 className="font-display font-semibold mb-4">Para Lojas</h4>
-            <ul className="space-y-2 text-sm text-primary-foreground/70 font-body">
-              <li><Link to="/vendedor" className="hover:text-accent transition-colors">Vender na Plataforma</Link></li>
-              <li><Link to="/vendedor" className="hover:text-accent transition-colors">Painel do Vendedor</Link></li>
-              <li><Link to="/vendedor" className="hover:text-accent transition-colors">Comissões</Link></li>
-            </ul>
-          </div>
 
           <div>
             <h4 className="font-display font-semibold mb-4">Suporte</h4>
