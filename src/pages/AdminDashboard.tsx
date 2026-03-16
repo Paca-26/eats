@@ -7,6 +7,7 @@ import AnimatedTabContent from "@/components/AnimatedTabContent";
 import { Users, Store, Package, MapPin, ShieldCheck, TrendingUp, Settings, BarChart3, Bell, Search, ChevronRight, Star, Eye, CheckCircle2, XCircle, Clock, AlertCircle, Edit, Shield, Mail, Phone, Save, Trash2, LogOut, Loader2, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useDemoAuth } from "@/contexts/DemoAuthContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useDisplayUser } from "@/hooks/useDisplayUser";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";

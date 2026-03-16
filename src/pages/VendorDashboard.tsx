@@ -12,6 +12,7 @@ import ImageUpload from "@/components/vendor/ImageUpload";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useDemoAuth } from "@/contexts/DemoAuthContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useDisplayUser } from "@/hooks/useDisplayUser";
 import { supabase } from "@/integrations/supabase/client";
 import heroVendor from "@/assets/hero-vendor.jpg";

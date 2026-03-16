@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import { useDemoAuth } from "@/contexts/DemoAuthContext";
+import { useAuth } from "@/contexts/AuthContext";
 import { useDisplayUser } from "@/hooks/useDisplayUser";
 import { supabase } from "@/integrations/supabase/client";
 import heroClient from "@/assets/hero-client.jpg";
