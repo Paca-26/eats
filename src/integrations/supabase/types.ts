@@ -129,6 +129,8 @@ export type Database = {
           delivery_fee: number
           delivery_notes: string | null
           id: string
+          logistics_id: string | null
+          logistics_status: string | null
           status: string
           store_id: string
           subtotal: number
@@ -142,6 +144,8 @@ export type Database = {
           delivery_fee?: number
           delivery_notes?: string | null
           id?: string
+          logistics_id?: string | null
+          logistics_status?: string | null
           status?: string
           store_id: string
           subtotal?: number
@@ -155,6 +159,8 @@ export type Database = {
           delivery_fee?: number
           delivery_notes?: string | null
           id?: string
+          logistics_id?: string | null
+          logistics_status?: string | null
           status?: string
           store_id?: string
           subtotal?: number
@@ -165,6 +171,13 @@ export type Database = {
           {
             foreignKeyName: "orders_customer_id_fkey_profiles"
             columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_logistics_id_fkey"
+            columns: ["logistics_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
