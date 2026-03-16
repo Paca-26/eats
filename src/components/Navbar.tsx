@@ -1,21 +1,21 @@
-import { Search, MapPin, ShoppingCart, User, Home, Grid3X3 } from "lucide-react";
-import { Link, useLocation } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import logoMo from "@/assets/logo-mo-alimenta.jpg";
-import { useDisplayUser } from "@/hooks/useDisplayUser";
-
-const navLinks = [
-  { label: "Início", icon: Home, path: "/" },
-  { label: "Categorias", icon: Grid3X3, path: "/categorias" },
-  { label: "Pesquisar", icon: Search, path: "/pesquisar" },
-  { label: "Carrinho", icon: ShoppingCart, path: "/carrinho" },
-  { label: "Conta", icon: User, path: "/auth" },
-];
+import { useAuth } from "@/contexts/AuthContext";
 
 const Navbar = () => {
   const location = useLocation();
   const { name, avatarUrl, email } = useDisplayUser();
+  const { role } = useAuth();
   const isLoggedIn = !!email;
+
+  const getDashboardPath = () => {
+    if (!isLoggedIn) return "/auth";
+    const roleRoute: Record<string, string> = {
+      client: "/cliente",
+      store: "/vendedor",
+      logistics: "/logistica",
+      admin: "/admin",
+    };
+    return roleRoute[role ?? "client"] ?? "/cliente";
+  };
 
   return (
     <nav className="sticky top-0 z-50 bg-primary shadow-lg">
@@ -27,9 +27,14 @@ const Navbar = () => {
           </span>
         </Link>
 
-        {/* Desktop nav links */}
         <div className="hidden md:flex items-center gap-1 font-body text-sm">
-          {navLinks.map((link) => {
+          {[
+            { label: "Início", icon: Home, path: "/" },
+            { label: "Categorias", icon: Grid3X3, path: "/categorias" },
+            { label: "Pesquisar", icon: Search, path: "/pesquisar" },
+            { label: "Carrinho", icon: ShoppingCart, path: "/carrinho" },
+            { label: "Conta", icon: User, path: getDashboardPath() },
+          ].map((link) => {
             const Icon = link.icon;
             const path = link.path;
             const isActive = location.pathname === path;
