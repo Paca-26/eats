@@ -660,8 +660,13 @@ const LogisticsSettings = () => {
 
 const LogisticsLogoutButton = () => {
   const { demoLogout } = useDemoAuth();
+  const { signOut } = useAuth();
   const navigate = useNavigate();
-  const handleLogout = () => { demoLogout(); navigate("/auth"); };
+  const handleLogout = async () => { 
+    await signOut();
+    demoLogout(); 
+    navigate("/auth"); 
+  };
   return (
     <Button variant="outline" onClick={handleLogout} className="w-full rounded-xl h-12 gap-2 font-body text-destructive border-destructive/20 hover:bg-destructive/10">
       <LogOut className="h-4 w-4" /> Terminar Sessão
