@@ -4,7 +4,7 @@ import DashboardShell from "@/components/DashboardShell";
 import BottomNav, { BottomNavItem } from "@/components/BottomNav";
 import StatCard from "@/components/StatCard";
 import AnimatedTabContent from "@/components/AnimatedTabContent";
-import { Users, Store, Package, MapPin, ShieldCheck, TrendingUp, Settings, BarChart3, Bell, Search, ChevronRight, Star, Eye, CheckCircle2, XCircle, Clock, AlertCircle, Edit, Shield, Mail, Phone, Save, Trash2, LogOut, Loader2 } from "lucide-react";
+import { Users, Store, Package, MapPin, ShieldCheck, TrendingUp, Settings, BarChart3, Bell, Search, ChevronRight, Star, Eye, CheckCircle2, XCircle, Clock, AlertCircle, Edit, Shield, Mail, Phone, Save, Trash2, LogOut, Loader2, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useDemoAuth } from "@/contexts/DemoAuthContext";
 import { useDisplayUser } from "@/hooks/useDisplayUser";
@@ -22,12 +22,69 @@ const navItems: BottomNavItem[] = [
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState("home");
+  const [newOrdersCount, setNewOrdersCount] = useState(0);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    // Initial fetch for pending orders to set the badge
+    const fetchPendingCount = async () => {
+      const { count, error } = await supabase
+        .from('orders')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'pending');
+      
+      if (!error && count !== null) {
+        setNewOrdersCount(count);
+      }
+    };
+
+    fetchPendingCount();
+
+    // Subscribe to new orders
+    const subscription = supabase
+      .channel('admin-orders')
+      .on('postgres_changes', { 
+        event: 'INSERT', 
+        schema: 'public', 
+        table: 'orders' 
+      }, (payload) => {
+        toast({
+          title: "Nova Encomenda!",
+          description: `Uma nova encomenda foi realizada (#${payload.new.id.substring(0, 6).toUpperCase()})`,
+        });
+        setNewOrdersCount(prev => prev + 1);
+      })
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'orders'
+      }, (payload) => {
+        // If status changed from pending to something else, decrement count
+        if (payload.old.status === 'pending' && payload.new.status !== 'pending') {
+          setNewOrdersCount(prev => Math.max(0, prev - 1));
+        } else if (payload.old.status !== 'pending' && payload.new.status === 'pending') {
+          setNewOrdersCount(prev => prev + 1);
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(subscription);
+    };
+  }, [toast]);
+
+  const navItemsWithBadges: BottomNavItem[] = navItems.map(item => {
+    if (item.id === "orders") {
+      return { ...item, badgeCount: newOrdersCount };
+    }
+    return item;
+  });
 
   const renderContent = () => {
     switch (activeTab) {
       case "home": return <AdminHome />;
       case "stores": return <AdminStores />;
-      case "orders": return <AdminOrders />;
+      case "orders": return <AdminOrders onOrderTotalUpdate={(count: number) => setNewOrdersCount(count)} />;
       case "users": return <AdminUsers />;
       case "settings": return <AdminSettings />;
       default: return <AdminHome />;
@@ -37,7 +94,7 @@ const AdminDashboard = () => {
   return (
     <DashboardShell
       title="Admin Mmm"
-      bottomNav={<BottomNav items={navItems} activeId={activeTab} onNavigate={setActiveTab} />}
+      bottomNav={<BottomNav items={navItemsWithBadges} activeId={activeTab} onNavigate={setActiveTab} />}
     >
       <div className="container mx-auto px-4 py-6">
         <AnimatedTabContent activeTab={activeTab}>
@@ -406,14 +463,32 @@ const AdminStoreProducts = ({ store, onClose }: { store: { id: string, name: str
   );
 };
 
-const AdminOrders = () => {
+const AdminOrders = ({ onOrderTotalUpdate }: { onOrderTotalUpdate?: (count: number) => void }) => {
   const [filter, setFilter] = useState("all");
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [totalOrders, setTotalOrders] = useState(0);
+  const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+  const [couriers, setCouriers] = useState<any[]>([]);
+  const [isAssigning, setIsAssigning] = useState(false);
   const ITEMS_PER_PAGE = 5;
   const { toast } = useToast();
+
+  const fetchCouriers = async () => {
+    try {
+      // Get users with role 'logistics'
+      const { data, error } = await supabase.rpc("get_admin_users");
+      if (error) throw error;
+      setCouriers(data?.filter((u: any) => u.role === "logistics") || []);
+    } catch (err) {
+      console.error("Erro ao buscar transportadores:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchCouriers();
+  }, []);
 
   const fetchOrders = async (currentPage: number, currentFilter: string) => {
     setLoading(true);
@@ -452,6 +527,30 @@ const AdminOrders = () => {
       toast({ title: "Erro", description: err.message, variant: "destructive" });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAssignCourier = async (orderId: string, courierId: string) => {
+    setIsAssigning(true);
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ 
+          logistics_id: courierId, 
+          logistics_status: 'assigned',
+          status: 'confirmed'
+        })
+        .eq('id', orderId);
+
+      if (error) throw error;
+
+      toast({ title: "Sucesso", description: "Transportador atribuído com sucesso." });
+      fetchOrders(page, filter);
+      setSelectedOrder(null);
+    } catch (err: any) {
+      toast({ title: "Erro", description: err.message, variant: "destructive" });
+    } finally {
+      setIsAssigning(false);
     }
   };
 
@@ -521,10 +620,94 @@ const AdminOrders = () => {
                   <p className="text-muted-foreground">Cliente: <span className="text-foreground font-medium">{o.profiles?.full_name || 'Desconhecido'}</span></p>
                   <p className="text-muted-foreground">Tel Cliente: <span className="text-foreground font-medium">{o.profiles?.phone || 'N/D'}</span></p>
                   <p className="text-muted-foreground">Total: <span className="text-purple-600 font-bold">{Number(o.total).toLocaleString('pt-AO')} Kz</span></p>
+                  {o.logistics_id && (
+                    <p className="text-muted-foreground sm:col-span-2 mt-1 flex items-center gap-1">
+                      <Truck className="h-3 w-3 text-emerald-500" />
+                      Transportador: <span className="text-emerald-600 font-medium">Atribuído</span>
+                    </p>
+                  )}
+                </div>
+                <div className="flex justify-end mt-2">
+                  <Button variant="outline" size="sm" className="h-7 text-[10px] rounded-lg" onClick={(e) => { e.stopPropagation(); setSelectedOrder(o); }}>
+                    Ver Detalhes / Atribuir
+                  </Button>
                 </div>
               </div>
             ))}
           </div>
+
+          {selectedOrder && (
+            <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+              <div className="bg-card border border-border rounded-2xl w-full max-w-md max-h-[90vh] flex flex-col shadow-xl overflow-hidden animate-in fade-in zoom-in-95">
+                <div className="p-4 border-b border-border flex items-center justify-between">
+                  <h3 className="font-display font-bold text-lg">Detalhes da Encomenda</h3>
+                  <Button variant="ghost" size="icon" onClick={() => setSelectedOrder(null)} className="rounded-full h-8 w-8">
+                    <XCircle className="h-5 w-5" />
+                  </Button>
+                </div>
+                <div className="p-4 overflow-y-auto space-y-4">
+                  <div className="space-y-2">
+                    <p className="text-sm font-semibold text-foreground">Informação Geral</p>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div className="p-2 bg-muted/50 rounded-lg">
+                        <p className="text-muted-foreground">Encomenda</p>
+                        <p className="font-bold">#{selectedOrder.id.substring(0, 8).toUpperCase()}</p>
+                      </div>
+                      <div className="p-2 bg-muted/50 rounded-lg">
+                        <p className="text-muted-foreground">Estado</p>
+                        <p className="font-bold">{statusLabels[selectedOrder.status] || selectedOrder.status}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="text-sm font-semibold text-foreground">Entrega</p>
+                    <div className="p-3 bg-muted/50 rounded-lg space-y-1 text-xs">
+                      <p className="flex items-center gap-2"><MapPin className="h-3 w-3 text-red-500" /> {selectedOrder.delivery_address || 'Endereço não fornecido'}</p>
+                      {selectedOrder.delivery_notes && <p className="text-muted-foreground mt-1 italic">"{selectedOrder.delivery_notes}"</p>}
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="text-sm font-semibold text-foreground">Atribuir Transportador</p>
+                    <div className="space-y-2">
+                      {couriers.length === 0 ? (
+                        <p className="text-xs text-muted-foreground bg-amber-50 p-3 rounded-lg border border-amber-100 italic">Nenhum transportador disponível no momento.</p>
+                      ) : (
+                        <div className="grid grid-cols-1 gap-2 max-h-40 overflow-y-auto pr-1">
+                          {couriers.map((courier) => (
+                            <div 
+                              key={courier.id} 
+                              className={`flex items-center justify-between p-2 rounded-xl border transition-all ${selectedOrder.logistics_id === courier.id ? 'border-emerald-500 bg-emerald-50/50' : 'border-border hover:bg-muted/50'}`}
+                            >
+                              <div className="flex items-center gap-2 overflow-hidden">
+                                <div className="h-7 w-7 rounded-full bg-emerald-100 flex items-center justify-center text-[10px] font-bold text-emerald-700 shrink-0">
+                                  {courier.full_name?.substring(0, 2).toUpperCase() || "TR"}
+                                </div>
+                                <div className="truncate">
+                                  <p className="text-xs font-bold truncate">{courier.full_name || 'Sem nome'}</p>
+                                  <p className="text-[10px] text-muted-foreground truncate">{courier.phone || 'Sem telefone'}</p>
+                                </div>
+                              </div>
+                              <Button 
+                                size="sm" 
+                                variant={selectedOrder.logistics_id === courier.id ? "ghost" : "default"} 
+                                className={`h-7 text-[10px] px-2 rounded-lg ${selectedOrder.logistics_id === courier.id ? 'text-emerald-600' : 'bg-emerald-500 hover:bg-emerald-600'}`}
+                                onClick={() => handleAssignCourier(selectedOrder.id, courier.id)}
+                                disabled={isAssigning || selectedOrder.logistics_id === courier.id}
+                              >
+                                {selectedOrder.logistics_id === courier.id ? 'Atribuído' : 'Atribuir'}
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {totalPages > 1 && (
             <div className="flex items-center justify-center gap-2 mt-4">
