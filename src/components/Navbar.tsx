@@ -1,4 +1,8 @@
+import { Home, Search, ShoppingCart, User, Grid3X3, MapPin } from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
+import { useDisplayUser } from "@/hooks/useDisplayUser";
 import { useAuth } from "@/contexts/AuthContext";
+import logoMo from "@/assets/logo-mo-circle.jpg";
 
 const Navbar = () => {
   const location = useLocation();
