@@ -261,6 +261,33 @@ const LogisticsDeliveries = ({ onUpdate }: { onUpdate?: () => void }) => {
 
   useEffect(() => {
     fetchOrders();
+
+    // Subscribe to real-time updates for this courier's orders
+    const setupSubscription = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const subscription = supabase
+        .channel(`logistics-orders-${user.id}`)
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'orders',
+          filter: `logistics_id=eq.${user.id}`
+        }, () => {
+          fetchOrders();
+        })
+        .subscribe();
+
+      return subscription;
+    };
+
+    let sub: any;
+    setupSubscription().then(s => sub = s);
+
+    return () => {
+      if (sub) supabase.removeChannel(sub);
+    };
   }, []);
 
   const handleUpdateLogisticsStatus = async (orderId: string, newStatus: string) => {

@@ -75,7 +75,7 @@ const VendorDashboard = () => {
         const [productsRes, ordersRes, unreadRes] = await Promise.all([
           supabase.from("products").select("id", { count: "exact", head: true }).eq("store_id", data.id),
           supabase.from("orders").select("id, total", { count: "exact" }).eq("store_id", data.id),
-          supabase.from("orders").select("id", { count: "exact", head: true }).eq("store_id", data.id).eq("status", "pending")
+          supabase.from("orders").select("id", { count: "exact", head: true }).eq("store_id", data.id).eq("status", "pending").eq("seen_by_vendor", false)
         ]);
 
         const productsCount = productsRes.count || 0;
@@ -126,7 +126,7 @@ const VendorDashboard = () => {
       const [productsRes, ordersRes, unreadRes] = await Promise.all([
         supabase.from("products").select("id", { count: "exact", head: true }).eq("store_id", data.id),
         supabase.from("orders").select("id, total", { count: "exact" }).eq("store_id", data.id),
-        supabase.from("orders").select("id", { count: "exact", head: true }).eq("store_id", data.id).eq("status", "pending")
+        supabase.from("orders").select("id", { count: "exact", head: true }).eq("store_id", data.id).eq("status", "pending").eq("seen_by_vendor", false)
       ]);
       setStats({
         productsCount: productsRes.count || 0,
@@ -583,9 +583,17 @@ const VendorOrders = ({ storeId, onUpdate }: { storeId: string, onUpdate: () => 
                 <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
                   <span className="font-body font-bold text-foreground">{Number(o.total).toLocaleString("pt-AO")} Kz</span>
                   <div className="flex gap-2">
-                    <Button size="sm" variant="outline" className="rounded-xl h-8 text-xs font-body">Detalhes</Button>
+                    <Button size="sm" variant="outline" className="rounded-xl h-8 text-xs font-body" onClick={async () => {
+                      if (!o.seen_by_vendor) {
+                        await supabase.from("orders").update({ seen_by_vendor: true }).eq("id", o.id);
+                        onUpdate();
+                      }
+                    }}>Detalhes</Button>
                     {o.status === "pending" && (
-                      <Button onClick={() => handleUpdateStatus(o.id, "preparing")} size="sm" className="rounded-xl h-8 text-xs font-body bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm">Aceitar</Button>
+                      <Button onClick={async () => {
+                        await supabase.from("orders").update({ seen_by_vendor: true }).eq("id", o.id);
+                        handleUpdateStatus(o.id, "preparing");
+                      }} size="sm" className="rounded-xl h-8 text-xs font-body bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm">Aceitar</Button>
                     )}
                     {o.status === "preparing" && (
                       <Button onClick={() => handleUpdateStatus(o.id, "delivered")} size="sm" className="rounded-xl h-8 text-xs font-body bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-sm">Entregue</Button>

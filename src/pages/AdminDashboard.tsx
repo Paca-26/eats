@@ -32,7 +32,8 @@ const AdminDashboard = () => {
       const { count, error } = await supabase
         .from('orders')
         .select('*', { count: 'exact', head: true })
-        .eq('status', 'pending');
+        .eq('status', 'pending')
+        .eq('seen_by_admin', false);
       
       if (!error && count !== null) {
         setNewOrdersCount(count);
@@ -61,10 +62,12 @@ const AdminDashboard = () => {
         table: 'orders'
       }, (payload) => {
         // If status changed from pending to something else, decrement count
-        if (payload.old.status === 'pending' && payload.new.status !== 'pending') {
+        if (payload.old.status === 'pending' && payload.new.status !== 'pending' && !payload.old.seen_by_admin) {
           setNewOrdersCount(prev => Math.max(0, prev - 1));
-        } else if (payload.old.status !== 'pending' && payload.new.status === 'pending') {
+        } else if (payload.new.status === 'pending' && !payload.new.seen_by_admin) {
           setNewOrdersCount(prev => prev + 1);
+        } else if (payload.old.seen_by_admin === false && payload.new.seen_by_admin === true && payload.new.status === 'pending') {
+          setNewOrdersCount(prev => Math.max(0, prev - 1));
         }
       })
       .subscribe();
@@ -545,6 +548,9 @@ const AdminOrders = ({ onOrderTotalUpdate }: { onOrderTotalUpdate?: (count: numb
 
       if (error) throw error;
 
+      // Mark as seen by admin when assigning
+      await supabase.from('orders').update({ seen_by_admin: true }).eq('id', orderId);
+
       toast({ title: "Sucesso", description: "Transportador atribuído com sucesso." });
       fetchOrders(page, filter);
       setSelectedOrder(null);
@@ -629,7 +635,15 @@ const AdminOrders = ({ onOrderTotalUpdate }: { onOrderTotalUpdate?: (count: numb
                   )}
                 </div>
                 <div className="flex justify-end mt-2">
-                  <Button variant="outline" size="sm" className="h-7 text-[10px] rounded-lg" onClick={(e) => { e.stopPropagation(); setSelectedOrder(o); }}>
+                  <Button variant="outline" size="sm" className="h-7 text-[10px] rounded-lg" onClick={async (e) => { 
+                    e.stopPropagation(); 
+                    setSelectedOrder(o);
+                    if (!o.seen_by_admin) {
+                      await supabase.from('orders').update({ seen_by_admin: true }).eq('id', o.id);
+                      // Update local state to reflect seen status
+                      setOrders(prev => prev.map(order => order.id === o.id ? { ...order, seen_by_admin: true } : order));
+                    }
+                  }}>
                     Ver Detalhes / Atribuir
                   </Button>
                 </div>

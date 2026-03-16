@@ -131,6 +131,8 @@ export type Database = {
           id: string
           logistics_id: string | null
           logistics_status: string | null
+          seen_by_admin: boolean
+          seen_by_vendor: boolean
           status: string
           store_id: string
           subtotal: number
@@ -146,6 +148,8 @@ export type Database = {
           id?: string
           logistics_id?: string | null
           logistics_status?: string | null
+          seen_by_admin?: boolean
+          seen_by_vendor?: boolean
           status?: string
           store_id: string
           subtotal?: number
@@ -161,6 +165,8 @@ export type Database = {
           id?: string
           logistics_id?: string | null
           logistics_status?: string | null
+          seen_by_admin?: boolean
+          seen_by_vendor?: boolean
           status?: string
           store_id?: string
           subtotal?: number
