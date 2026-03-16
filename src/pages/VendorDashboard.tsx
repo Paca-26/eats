@@ -586,8 +586,9 @@ const VendorOrders = ({ storeId, onUpdate }: { storeId: string, onUpdate: () => 
                     <Button size="sm" variant="outline" className="rounded-xl h-8 text-xs font-body" onClick={async () => {
                       if (!o.seen_by_vendor) {
                         await supabase.from("orders").update({ seen_by_vendor: true }).eq("id", o.id);
-                        onUpdate();
+                        onUpdate(); // This will refresh the counters in the parent
                       }
+                      setSelectedOrder(o);
                     }}>Detalhes</Button>
                     {o.status === "pending" && (
                       <Button onClick={async () => {

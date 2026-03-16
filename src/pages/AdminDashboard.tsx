@@ -642,6 +642,7 @@ const AdminOrders = ({ onOrderTotalUpdate }: { onOrderTotalUpdate?: (count: numb
                       await supabase.from('orders').update({ seen_by_admin: true }).eq('id', o.id);
                       // Update local state to reflect seen status
                       setOrders(prev => prev.map(order => order.id === o.id ? { ...order, seen_by_admin: true } : order));
+                      setNewOrdersCount(prev => Math.max(0, prev - 1));
                     }
                   }}>
                     Ver Detalhes / Atribuir
