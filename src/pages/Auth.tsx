@@ -7,16 +7,10 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  Mail, Lock, Eye, EyeOff, ArrowRight, Zap,
-  ShoppingBag, Store, Truck, ShieldCheck, LogIn, UserPlus,
+  Mail, Lock, Eye, EyeOff, LogIn, UserPlus, ShoppingBag, Store, Truck
 } from "lucide-react";
 
-const demoCards = [
-  { label: "Cliente", icon: ShoppingBag, gradient: "from-blue-500 to-blue-600", path: "/cliente", desc: "Explorar lojas e fazer encomendas" },
-  { label: "Vendedor", icon: Store, gradient: "from-amber-500 to-orange-500", path: "/vendedor", desc: "Gerir produtos e encomendas" },
-  { label: "Logística", icon: Truck, gradient: "from-emerald-500 to-green-600", path: "/logistica", desc: "Gerir entregas e rotas" },
-  { label: "Admin", icon: ShieldCheck, gradient: "from-purple-500 to-violet-600", path: "/admin", desc: "Gestão central da plataforma" },
-];
+
 
 const roleOptions = [
   { value: "client", label: "Cliente", icon: ShoppingBag, desc: "Comprar produtos e fazer encomendas" },
@@ -36,7 +30,6 @@ const Auth = () => {
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [role, setRole] = useState("client");
   const [showPassword, setShowPassword] = useState(false);
-  const [showDemo, setShowDemo] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -341,60 +334,7 @@ const Auth = () => {
           </div>
         </motion.form>
 
-        {/* Demo Section */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-        >
-          <button
-            onClick={() => setShowDemo(!showDemo)}
-            className="w-full bg-gradient-to-r from-accent/5 via-primary/5 to-accent/5 border border-accent/10 rounded-2xl p-4 flex items-center gap-3 hover:border-accent/25 transition-colors text-left"
-          >
-            <Zap className="h-5 w-5 text-accent shrink-0" />
-            <div className="flex-1">
-              <p className="text-sm font-body text-foreground font-semibold">Modo Demonstração</p>
-              <p className="text-xs text-muted-foreground font-body mt-0.5">Explore sem criar conta</p>
-            </div>
-            <ArrowRight className={`h-4 w-4 text-muted-foreground transition-transform duration-300 ${showDemo ? "rotate-90" : ""}`} />
-          </button>
 
-          <AnimatePresence>
-            {showDemo && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.3 }}
-                className="overflow-hidden"
-              >
-                <div className="grid grid-cols-2 gap-2 pt-3">
-                  {demoCards.map((card, i) => {
-                    const Icon = card.icon;
-                    return (
-                      <motion.button
-                        key={card.path}
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: i * 0.06 }}
-                        onClick={() => navigate(card.path)}
-                        className="flex items-center gap-3 p-3 bg-card border border-border rounded-xl hover:shadow-md hover:scale-[1.03] transition-all duration-200 text-left group"
-                      >
-                        <div className={`p-2 rounded-lg bg-gradient-to-br ${card.gradient} text-white shrink-0`}>
-                          <Icon className="h-4 w-4" />
-                        </div>
-                        <div className="min-w-0">
-                          <span className="font-body font-semibold text-foreground text-sm block">{card.label}</span>
-                          <span className="text-[11px] text-muted-foreground font-body block leading-tight">{card.desc}</span>
-                        </div>
-                      </motion.button>
-                    );
-                  })}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </motion.div>
       </motion.div>
     </div>
   );

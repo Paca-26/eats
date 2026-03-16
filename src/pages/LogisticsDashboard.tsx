@@ -136,17 +136,42 @@ const LogisticsHome = () => {
         .select('*, stores(name), profiles:customer_id(full_name)')
         .eq('logistics_id', user.id)
         .in('logistics_status', ['assigned', 'accepted', 'in_transit'])
-        .order('updated_at', { ascending: false })
-        .limit(3);
+        .order('updated_at', { ascending: false });
 
       if (!error) {
         setPendingOrders(ordersData || []);
       }
+
+      // Fetch today's delivered orders count
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      const { count: deliveredToday } = await supabase
+        .from('orders')
+        .select('*', { count: 'exact', head: true })
+        .eq('logistics_id', user.id)
+        .eq('status', 'delivered')
+        .gte('updated_at', today.toISOString());
+
+      // Fetch exact pending count (status 'assigned')
+      const { count: pendingCount } = await supabase
+        .from('orders')
+        .select('*', { count: 'exact', head: true })
+        .eq('logistics_id', user.id)
+        .eq('logistics_status', 'assigned');
+
+      setStats({
+        deliveredToday: deliveredToday || 0,
+        pendingCount: pendingCount || 0,
+      });
+
       setLoading(false);
     };
 
     fetchData();
   }, []);
+
+  const [stats, setStats] = useState({ deliveredToday: 0, pendingCount: 0 });
 
   return (
   <div className="space-y-6">
@@ -172,10 +197,10 @@ const LogisticsHome = () => {
       </div>
     </div>
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-      <StatCard label="Entregas Hoje" value="8" icon={Truck} trend="+3" trendUp />
-      <StatCard label="Pendentes" value={String(pendingOrders.length)} icon={Package} />
-      <StatCard label="Zonas Activas" value="2" icon={MapPin} />
-      <StatCard label="Tempo Médio" value="22 min" icon={Clock} />
+      <StatCard label="Entregas Hoje" value={String(stats.deliveredToday)} icon={Truck} trend="+3" trendUp />
+      <StatCard label="Pendentes" value={String(stats.pendingCount)} icon={Package} />
+      <StatCard label="Zonas Activas" value="1" icon={MapPin} />
+      <StatCard label="Tempo Médio" value="--" icon={Clock} />
     </div>
     <div className="bg-card border border-border rounded-2xl overflow-hidden">
       <div className="p-4 border-b border-border flex items-center justify-between">
