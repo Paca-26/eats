@@ -111,16 +111,27 @@ const LogisticsDashboard = () => {
 };
 
 const LogisticsHome = () => {
-  const { name } = useDisplayUser();
+  const { name, avatarUrl } = useDisplayUser();
+  const [profile, setProfile] = useState<any>(null);
   const [pendingOrders, setPendingOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchPending = async () => {
+    const fetchData = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data, error } = await supabase
+      // Fetch profile for vehicle info and zone
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('*, zones(name)')
+        .eq('id', user.id)
+        .single();
+      
+      if (profileData) setProfile(profileData);
+
+      // Fetch pending orders
+      const { data: ordersData, error } = await supabase
         .from('orders')
         .select('*, stores(name), profiles:customer_id(full_name)')
         .eq('logistics_id', user.id)
@@ -129,26 +140,34 @@ const LogisticsHome = () => {
         .limit(3);
 
       if (!error) {
-        setPendingOrders(data || []);
+        setPendingOrders(ordersData || []);
       }
       setLoading(false);
     };
 
-    fetchPending();
+    fetchData();
   }, []);
 
   return (
   <div className="space-y-6">
     <div className="relative rounded-2xl overflow-hidden h-44">
-      <img src={heroLogistics} alt="Entregas" className="absolute inset-0 w-full h-full object-cover" />
+      {avatarUrl ? (
+        <img src={avatarUrl} alt="Perfil" className="absolute inset-0 w-full h-full object-cover" />
+      ) : (
+        <img src={heroLogistics} alt="Entregas" className="absolute inset-0 w-full h-full object-cover" />
+      )}
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/10" />
       <div className="relative z-10 p-6 h-full flex flex-col justify-end text-white">
         <p className="text-white/80 font-body text-sm">Motorista</p>
         <h1 className="font-display text-2xl font-bold mt-1 flex items-center gap-2">{name} <Truck className="h-6 w-6" /></h1>
         <div className="flex items-center gap-3 mt-1.5">
           <span className="bg-emerald-500/80 backdrop-blur-sm text-white text-xs font-body px-2.5 py-0.5 rounded-full flex items-center gap-1">🟢 Online</span>
-          <span className="bg-white/20 backdrop-blur-sm text-white text-xs font-body px-2.5 py-0.5 rounded-full flex items-center gap-1"><MapPin className="h-3 w-3" /> Talatona</span>
-          <span className="bg-white/20 backdrop-blur-sm text-white text-xs font-body px-2.5 py-0.5 rounded-full flex items-center gap-1"><Star className="h-3 w-3 fill-white" /> 4.9</span>
+          <span className="bg-white/20 backdrop-blur-sm text-white text-xs font-body px-2.5 py-0.5 rounded-full flex items-center gap-1">
+            <MapPin className="h-3 w-3" /> {profile?.zones?.name || 'Localização'}
+          </span>
+          <span className="bg-white/20 backdrop-blur-sm text-white text-xs font-body px-2.5 py-0.5 rounded-full flex items-center gap-1">
+            <Truck className="h-3 w-3" /> {profile?.vehicle_type || 'Mota'}
+          </span>
         </div>
       </div>
     </div>
@@ -397,42 +416,198 @@ const LogisticsHistory = () => {
 };
 
 const LogisticsSettings = () => {
-  const { name, email } = useDisplayUser();
+  const { name, email, avatarUrl } = useDisplayUser();
+  const [profile, setProfile] = useState<any>({
+    full_name: "",
+    phone: "",
+    vehicle_type: "Mota",
+    license_plate: "",
+    vehicle_capacity: "",
+    avatar_url: ""
+  });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+      
+      if (data) {
+        setProfile({
+          full_name: data.full_name || "",
+          phone: data.phone || "",
+          vehicle_type: data.vehicle_type || "Mota",
+          license_plate: data.license_plate || "",
+          vehicle_capacity: data.vehicle_capacity || "",
+          avatar_url: data.avatar_url || ""
+        });
+      }
+      setLoading(false);
+    };
+
+    fetchProfile();
+  }, []);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Usuário não autenticado");
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          full_name: profile.full_name,
+          phone: profile.phone,
+          vehicle_type: profile.vehicle_type,
+          license_plate: profile.license_plate,
+          vehicle_capacity: profile.vehicle_capacity,
+          avatar_url: profile.avatar_url,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user.id);
+
+      if (error) throw error;
+      toast({ title: "Sucesso", description: "Perfil atualizado com sucesso." });
+    } catch (err: any) {
+      toast({ title: "Erro", description: err.message, variant: "destructive" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const fileExt = file.name.split('.').pop();
+      const filePath = `${user.id}-${Math.random()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      setProfile(prev => ({ ...prev, avatar_url: publicUrl }));
+      toast({ title: "Sucesso", description: "Avatar carregado. Salve para aplicar." });
+    } catch (err: any) {
+      toast({ title: "Erro", description: err.message, variant: "destructive" });
+    }
+  };
+
+  if (loading) return <div className="flex justify-center py-20"><Loader2 className="animate-spin h-10 w-10 text-emerald-500" /></div>;
+
   return (
   <div className="space-y-5">
     <h2 className="font-display text-2xl font-bold text-foreground">Definições</h2>
+    
     <div className="bg-card border border-border rounded-2xl p-5">
-      <div className="flex items-center gap-4 mb-4">
-        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-emerald-400 to-green-600 flex items-center justify-center text-white text-xl font-display font-bold">{name.split(" ").map((n: string) => n[0]).join("").slice(0, 2)}</div>
-        <div>
-          <h3 className="font-display font-bold text-foreground text-lg">{name}</h3>
-          <p className="text-sm text-muted-foreground font-body">{email || "pedro@demo.ao"}</p>
-          <p className="text-xs text-muted-foreground font-body flex items-center gap-1"><Phone className="h-3 w-3" /> +244 926 555 666</p>
+      <div className="flex flex-col items-center mb-6">
+        <div className="relative group">
+          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-emerald-400 to-green-600 flex items-center justify-center text-white text-3xl font-display font-bold overflow-hidden shadow-lg">
+            {profile.avatar_url ? (
+              <img src={profile.avatar_url} alt="Avatar" className="w-full h-full object-cover" />
+            ) : (
+              name.split(" ").map((n: string) => n[0]).join("").slice(0, 2)
+            )}
+          </div>
+          <label className="absolute inset-0 flex items-center justify-center bg-black/40 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+            <Edit className="h-6 w-6" />
+            <input type="file" className="hidden" accept="image/*" onChange={handleAvatarUpload} />
+          </label>
+        </div>
+        <div className="text-center mt-3">
+          <h3 className="font-display font-bold text-foreground text-lg">{profile.full_name || name}</h3>
+          <p className="text-sm text-muted-foreground font-body">{email}</p>
+        </div>
+      </div>
+
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <label className="text-sm font-body font-semibold text-foreground">Nome Completo</label>
+          <input 
+            type="text" 
+            value={profile.full_name} 
+            onChange={e => setProfile({...profile, full_name: e.target.value})}
+            className="w-full h-11 px-4 rounded-xl border border-border bg-background focus:ring-2 focus:ring-emerald-500 outline-none font-body text-sm"
+          />
+        </div>
+        <div className="space-y-2">
+          <label className="text-sm font-body font-semibold text-foreground">Telefone</label>
+          <input 
+            type="text" 
+            value={profile.phone} 
+            onChange={e => setProfile({...profile, phone: e.target.value})}
+            className="w-full h-11 px-4 rounded-xl border border-border bg-background focus:ring-2 focus:ring-emerald-500 outline-none font-body text-sm"
+          />
         </div>
       </div>
     </div>
+
     <div className="bg-card border border-border rounded-2xl p-5">
-      <h3 className="font-display font-bold text-foreground mb-3">Veículo</h3>
-      <div className="space-y-2">
-        {[
-          { label: "Tipo", value: "Mota" },
-          { label: "Matrícula", value: "LD-45-XX-99" },
-          { label: "Capacidade", value: "Até 15 kg" },
-        ].map((v) => (
-          <div key={v.label} className="flex items-center justify-between p-3 bg-muted/50 rounded-xl">
-            <span className="text-sm font-body text-muted-foreground">{v.label}</span>
-            <span className="text-sm font-body font-semibold text-foreground">{v.value}</span>
-          </div>
-        ))}
+      <h3 className="font-display font-bold text-foreground mb-4 flex items-center gap-2">
+        <Truck className="h-5 w-5 text-emerald-500" /> Dados do Veículo
+      </h3>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <label className="text-xs font-body font-semibold text-muted-foreground">Tipo de Veículo</label>
+          <select 
+            value={profile.vehicle_type} 
+            onChange={e => setProfile({...profile, vehicle_type: e.target.value})}
+            className="w-full h-11 px-4 rounded-xl border border-border bg-background focus:ring-2 focus:ring-emerald-500 outline-none font-body text-sm"
+          >
+            <option value="Mota">Mota</option>
+            <option value="Carro">Carro</option>
+            <option value="Bicicleta">Bicicleta</option>
+            <option value="Carrinha">Carrinha</option>
+          </select>
+        </div>
+        <div className="space-y-2">
+          <label className="text-xs font-body font-semibold text-muted-foreground">Matrícula</label>
+          <input 
+            type="text" 
+            placeholder="Ex: LD-00-00-XX"
+            value={profile.license_plate} 
+            onChange={e => setProfile({...profile, license_plate: e.target.value})}
+            className="w-full h-11 px-4 rounded-xl border border-border bg-background focus:ring-2 focus:ring-emerald-500 outline-none font-body text-sm"
+          />
+        </div>
+        <div className="space-y-2 sm:col-span-2">
+          <label className="text-xs font-body font-semibold text-muted-foreground">Capacidade de Carga</label>
+          <input 
+            type="text" 
+            placeholder="Ex: Até 20kg"
+            value={profile.vehicle_capacity} 
+            onChange={e => setProfile({...profile, vehicle_capacity: e.target.value})}
+            className="w-full h-11 px-4 rounded-xl border border-border bg-background focus:ring-2 focus:ring-emerald-500 outline-none font-body text-sm"
+          />
+        </div>
       </div>
     </div>
+
     <div className="bg-card border border-border rounded-2xl overflow-hidden divide-y divide-border">
       {[
         { label: "Disponível para entregas", desc: "Receber novas entregas", active: true },
         { label: "Notificações sonoras", desc: "Som ao receber entregas", active: true },
-        { label: "Modo nocturno", desc: "Entregas após as 21h", active: false },
       ].map((toggle) => (
-        <div key={toggle.label} className="flex items-center justify-between p-4">
+        <div key={toggle.label} className="flex items-center justify-between p-4 px-5">
           <div>
             <span className="font-body font-semibold text-foreground text-sm block">{toggle.label}</span>
             <span className="text-xs text-muted-foreground font-body">{toggle.desc}</span>
@@ -443,9 +618,16 @@ const LogisticsSettings = () => {
         </div>
       ))}
     </div>
-    <Button className="w-full rounded-xl h-12 gap-2 font-body bg-gradient-to-r from-emerald-500 to-green-600 text-white">
-      <Save className="h-4 w-4" /> Guardar Alterações
+
+    <Button 
+      onClick={handleSave} 
+      disabled={saving}
+      className="w-full rounded-2xl h-12 gap-2 font-body font-bold text-white bg-gradient-to-r from-emerald-500 to-green-600 shadow-md hover:shadow-lg transition-all"
+    >
+      {saving ? <Loader2 className="animate-spin h-4 w-4" /> : <Save className="h-4 w-4" />}
+      Guardar Alterações
     </Button>
+    
     <LogisticsLogoutButton />
   </div>
   );

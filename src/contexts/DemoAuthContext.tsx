@@ -7,6 +7,7 @@ interface DemoUser {
   name: string;
   email: string;
   role: DemoRole;
+  avatarUrl?: string;
 }
 
 interface DemoAuthContextType {
@@ -26,10 +27,10 @@ const DemoAuthContext = createContext<DemoAuthContextType>({
 export const useDemoAuth = () => useContext(DemoAuthContext);
 
 const DEMO_ACCOUNTS: Record<string, DemoUser> = {
-  client: { name: "Maria Silva", email: "maria@demo.ao", role: "client" },
-  store: { name: "João Loja", email: "joao@demo.ao", role: "store" },
-  logistics: { name: "Pedro Entrega", email: "pedro@demo.ao", role: "logistics" },
-  admin: { name: "Ana Admin", email: "ana@demo.ao", role: "admin" },
+  client: { name: "Maria Silva", email: "maria@demo.ao", role: "client", avatarUrl: "https://i.pravatar.cc/150?u=maria" },
+  store: { name: "João Loja", email: "joao@demo.ao", role: "store", avatarUrl: "https://i.pravatar.cc/150?u=joao" },
+  logistics: { name: "Pedro Entrega", email: "pedro@demo.ao", role: "logistics", avatarUrl: "https://i.pravatar.cc/150?u=pedro" },
+  admin: { name: "Ana Admin", email: "ana@demo.ao", role: "admin", avatarUrl: "https://i.pravatar.cc/150?u=ana" },
 };
 
 export const getDemoAccounts = () => DEMO_ACCOUNTS;

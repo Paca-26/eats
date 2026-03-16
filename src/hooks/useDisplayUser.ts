@@ -7,6 +7,7 @@ export const useDisplayUser = () => {
 
   const name = user?.user_metadata?.full_name || demoUser?.name || "Utilizador";
   const email = user?.email || demoUser?.email || "";
+  const avatarUrl = user?.user_metadata?.avatar_url || demoUser?.avatarUrl || "";
   const initials = name
     .split(" ")
     .map((n: string) => n[0])
@@ -14,5 +15,5 @@ export const useDisplayUser = () => {
     .slice(0, 2)
     .toUpperCase();
 
-  return { name, email, initials };
+  return { name, email, avatarUrl, initials };
 };

@@ -263,8 +263,11 @@ export type Database = {
           created_at: string
           full_name: string
           id: string
+          license_plate: string | null
           phone: string | null
           updated_at: string
+          vehicle_capacity: string | null
+          vehicle_type: string | null
           zone_id: string | null
         }
         Insert: {
@@ -272,8 +275,11 @@ export type Database = {
           created_at?: string
           full_name: string
           id: string
+          license_plate?: string | null
           phone?: string | null
           updated_at?: string
+          vehicle_capacity?: string | null
+          vehicle_type?: string | null
           zone_id?: string | null
         }
         Update: {
@@ -281,8 +287,11 @@ export type Database = {
           created_at?: string
           full_name?: string
           id?: string
+          license_plate?: string | null
           phone?: string | null
           updated_at?: string
+          vehicle_capacity?: string | null
+          vehicle_type?: string | null
           zone_id?: string | null
         }
         Relationships: [
