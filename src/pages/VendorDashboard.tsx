@@ -498,6 +498,7 @@ const VendorOrders = ({ storeId, onUpdate }: { storeId: string, onUpdate: () => 
   const [activeFilter, setActiveFilter] = useState("all");
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
 
   const fetchOrders = async () => {
     setLoading(true);
@@ -541,9 +542,14 @@ const VendorOrders = ({ storeId, onUpdate }: { storeId: string, onUpdate: () => 
 
   const getStatusDisplay = (status: string) => {
     switch (status) {
-      case "pending": return { label: "Nova", color: "bg-amber-100 text-amber-700" };
-      case "preparing": return { label: "Preparando", color: "bg-blue-100 text-blue-700" };
+      case "pending": return { label: "Aguardando Validação", color: "bg-amber-100 text-amber-700" };
+      case "awaiting_payment": return { label: "Aguardando Pagamento", color: "bg-orange-100 text-orange-700" };
+      case "paid": return { label: "Pago", color: "bg-blue-100 text-blue-700" };
+      case "preparing": return { label: "Em Preparação", color: "bg-purple-100 text-purple-700" };
+      case "ready_for_delivery": return { label: "Pronto para Entrega", color: "bg-emerald-100 text-emerald-700" };
+      case "in_transit": return { label: "Em Transporte", color: "bg-blue-100 text-blue-700" };
       case "delivered": return { label: "Entregue", color: "bg-emerald-100 text-emerald-700" };
+      case "completed": return { label: "Concluído", color: "bg-gray-100 text-gray-700" };
       case "cancelled": return { label: "Cancelado", color: "bg-red-100 text-red-700" };
       default: return { label: status, color: "bg-gray-100 text-gray-700" };
     }
@@ -591,19 +597,95 @@ const VendorOrders = ({ storeId, onUpdate }: { storeId: string, onUpdate: () => 
                       setSelectedOrder(o);
                     }}>Detalhes</Button>
                     {o.status === "pending" && (
-                      <Button onClick={async () => {
-                        await supabase.from("orders").update({ seen_by_vendor: true }).eq("id", o.id);
-                        handleUpdateStatus(o.id, "preparing");
-                      }} size="sm" className="rounded-xl h-8 text-xs font-body bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm">Aceitar</Button>
+                      <>
+                        <Button onClick={async () => {
+                          handleUpdateStatus(o.id, "cancelled");
+                        }} size="sm" variant="outline" className="rounded-xl h-8 text-xs font-body border-red-200 text-red-600">Rejeitar</Button>
+                        <Button onClick={async () => {
+                          await supabase.from("orders").update({ seen_by_vendor: true }).eq("id", o.id);
+                          handleUpdateStatus(o.id, "awaiting_payment");
+                        }} size="sm" className="rounded-xl h-8 text-xs font-body bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm">Aprovar</Button>
+                      </>
+                    )}
+                    {o.status === "paid" && (
+                      <Button onClick={() => handleUpdateStatus(o.id, "preparing")} size="sm" className="rounded-xl h-8 text-xs font-body bg-purple-500 text-white shadow-sm">Preparar</Button>
                     )}
                     {o.status === "preparing" && (
-                      <Button onClick={() => handleUpdateStatus(o.id, "delivered")} size="sm" className="rounded-xl h-8 text-xs font-body bg-gradient-to-r from-emerald-500 to-green-600 text-white shadow-sm">Entregue</Button>
+                      <Button onClick={() => handleUpdateStatus(o.id, "ready_for_delivery")} size="sm" className="rounded-xl h-8 text-xs font-body bg-emerald-500 text-white shadow-sm">Pronto</Button>
                     )}
                   </div>
                 </div>
               </div>
             );
           })}
+        </div>
+      )}
+
+      {selectedOrder && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-2xl w-full max-w-md max-h-[90vh] flex flex-col shadow-xl overflow-hidden animate-in fade-in zoom-in-95">
+            <div className="p-4 border-b border-border flex items-center justify-between">
+              <h3 className="font-display font-bold text-lg">Detalhes da Encomenda</h3>
+              <Button variant="ghost" size="icon" onClick={() => setSelectedOrder(null)} className="rounded-full h-8 w-8">
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+            <div className="p-4 overflow-y-auto space-y-4">
+              <div className="space-y-2">
+                <p className="text-sm font-semibold text-foreground">Informação Geral</p>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="p-2 bg-muted/50 rounded-lg">
+                    <p className="text-muted-foreground">Estado</p>
+                    <p className="font-bold">{getStatusDisplay(selectedOrder.status).label}</p>
+                  </div>
+                  <div className="p-2 bg-muted/50 rounded-lg">
+                    <p className="text-muted-foreground">Total</p>
+                    <p className="font-bold">{Number(selectedOrder.total).toLocaleString("pt-AO")} Kz</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-sm font-semibold text-foreground">Entrega</p>
+                <div className="p-3 bg-muted/50 rounded-lg space-y-1 text-xs">
+                  <p className="flex items-center gap-2"><Clock className="h-3 w-3" /> {selectedOrder.delivery_type === 'immediate' ? 'Imediata' : `Agendada: ${selectedOrder.scheduled_date} às ${selectedOrder.scheduled_time}`}</p>
+                  <p className="flex items-center gap-2"><MapPin className="h-3 w-3" /> {selectedOrder.delivery_address || 'Não especificado'}</p>
+                  <p className="flex items-center gap-2 font-medium">Substituição: {selectedOrder.accept_substitution ? '✅ Aceita' : '❌ Não aceita'}</p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-sm font-semibold text-foreground">Notas do Cliente</p>
+                <p className="text-xs p-3 bg-muted/30 rounded-lg italic text-muted-foreground">
+                  {selectedOrder.delivery_notes || "Sem notas adicionais."}
+                </p>
+              </div>
+
+              {selectedOrder.status === "pending" && (
+                <div className="pt-4 flex gap-2">
+                  <Button
+                    variant="outline"
+                    className="flex-1 rounded-xl text-xs font-body border-red-200 text-red-600"
+                    onClick={() => {
+                      handleUpdateStatus(selectedOrder.id, "cancelled");
+                      setSelectedOrder(null);
+                    }}
+                  >
+                    Rejeitar
+                  </Button>
+                  <Button
+                    className="flex-1 rounded-xl text-xs font-body bg-gradient-to-r from-amber-500 to-orange-500 text-white"
+                    onClick={() => {
+                      handleUpdateStatus(selectedOrder.id, "awaiting_payment");
+                      setSelectedOrder(null);
+                    }}
+                  >
+                    Aprovar Pedido
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>

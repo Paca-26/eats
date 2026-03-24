@@ -267,7 +267,7 @@ const LogisticsDeliveries = ({ onUpdate }: { onUpdate?: () => void }) => {
     try {
       const updates: any = { logistics_status: newStatus };
       if (newStatus === 'accepted') updates.status = 'preparing';
-      if (newStatus === 'in_transit') updates.status = 'delivering';
+      if (newStatus === 'in_transit') updates.status = 'in_transit';
       if (newStatus === 'delivered') updates.status = 'delivered';
 
       const { error } = await supabase
@@ -314,8 +314,8 @@ const LogisticsDeliveries = ({ onUpdate }: { onUpdate?: () => void }) => {
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <span className="font-body font-bold text-foreground text-sm">#{d.id.substring(0,6).toUpperCase()}</span>
-                  <span className={`text-[10px] font-body font-semibold px-2 py-0.5 rounded-full ${d.logistics_status === 'assigned' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>
-                    {d.logistics_status === 'assigned' ? 'Pendente' : d.logistics_status === 'accepted' ? 'Aceite' : d.logistics_status}
+                  <span className={`text-[10px] font-body font-semibold px-2 py-0.5 rounded-full ${d.status === 'ready_for_delivery' ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>
+                    {d.status === 'ready_for_delivery' ? 'Pronto p/ Entrega' : d.status === 'in_transit' ? 'Em Transporte' : d.status === 'delivered' ? 'Entregue' : d.logistics_status}
                   </span>
                 </div>
               </div>

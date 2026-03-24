@@ -322,7 +322,7 @@ const AdminStores = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className={`text-[10px] font-body font-semibold px-2 py-0.5 rounded-full ${s.is_active ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
-                    {s.is_active ? "Activa" : "Inativa/Pendente"}
+                    {s.is_active ? "Ativa" : "Pendente/Suspensa"}
                   </span>
                   <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => handleDeleteStore(s.id, s.name)}>
                     <Trash2 className="h-3 w-3" />
@@ -507,7 +507,7 @@ const AdminOrders = ({ onOrderTotalUpdate }: { onOrderTotalUpdate?: (count: numb
 
       if (currentFilter !== "all") {
         if (currentFilter === "active") {
-          query = query.in('status', ['pending', 'confirmed', 'preparing', 'ready', 'delivering']);
+          query = query.in('status', ['pending', 'validating', 'awaiting_payment', 'paid', 'preparing', 'ready_for_delivery', 'in_transit']);
         } else if (currentFilter === "delivered") {
           query = query.eq('status', 'delivered');
         } else if (currentFilter === "issues") {
@@ -542,7 +542,7 @@ const AdminOrders = ({ onOrderTotalUpdate }: { onOrderTotalUpdate?: (count: numb
         .update({ 
           logistics_id: courierId, 
           logistics_status: 'assigned',
-          status: 'confirmed'
+          status: 'ready_for_delivery'
         })
         .eq('id', orderId);
 
@@ -574,21 +574,27 @@ const AdminOrders = ({ onOrderTotalUpdate }: { onOrderTotalUpdate?: (count: numb
 
   const statusColors: Record<string, string> = {
     pending: "bg-amber-100 text-amber-700",
-    confirmed: "bg-blue-100 text-blue-700",
+    validating: "bg-amber-100 text-amber-700",
+    awaiting_payment: "bg-orange-100 text-orange-700",
+    paid: "bg-blue-100 text-blue-700",
     preparing: "bg-purple-100 text-purple-700",
-    ready: "bg-emerald-100 text-emerald-700",
-    delivering: "bg-blue-100 text-blue-700",
+    ready_for_delivery: "bg-emerald-100 text-emerald-700",
+    in_transit: "bg-blue-100 text-blue-700",
     delivered: "bg-emerald-100 text-emerald-700",
+    completed: "bg-gray-100 text-gray-700",
     cancelled: "bg-red-100 text-red-700",
   };
 
   const statusLabels: Record<string, string> = {
-    pending: "Pendente",
-    confirmed: "Confirmada",
+    pending: "Aguardando Validação",
+    validating: "Em Validação",
+    awaiting_payment: "Aguardando Pagamento",
+    paid: "Pago",
     preparing: "A preparar",
-    ready: "Pronto a recolher",
-    delivering: "A caminho",
+    ready_for_delivery: "Pronto p/ Entrega",
+    in_transit: "Em Transporte",
     delivered: "Entregue",
+    completed: "Concluída",
     cancelled: "Cancelada",
   };
 

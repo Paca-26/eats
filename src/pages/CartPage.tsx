@@ -18,6 +18,10 @@ const CartPage = () => {
   const navigate = useNavigate();
   const [deliveryAddress, setDeliveryAddress] = useState("");
   const [deliveryNotes, setDeliveryNotes] = useState("");
+  const [acceptSubstitution, setAcceptSubstitution] = useState(false);
+  const [deliveryType, setDeliveryType] = useState<"immediate" | "scheduled">("immediate");
+  const [scheduledDate, setScheduledDate] = useState("");
+  const [scheduledTime, setScheduledTime] = useState("");
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
 
   const currentRole = isDemoMode ? demoUser?.role : role;
@@ -49,6 +53,11 @@ const CartPage = () => {
       return;
     }
 
+    if (deliveryType === "scheduled" && (!scheduledDate || !scheduledTime)) {
+      toast.error("Por favor, defina a data e hora para a entrega agendada");
+      return;
+    }
+
     setIsPlacingOrder(true);
     try {
       // Group items by store to create separate orders if needed, or one order per store
@@ -68,6 +77,10 @@ const CartPage = () => {
             status: "pending",
             delivery_address: deliveryAddress,
             delivery_notes: deliveryNotes,
+            accept_substitution: acceptSubstitution,
+            delivery_type: deliveryType,
+            scheduled_date: deliveryType === "scheduled" ? scheduledDate : null,
+            scheduled_time: deliveryType === "scheduled" ? scheduledTime : null,
             subtotal: storeSubtotal,
             delivery_fee: 1500, // Fixed for simplicity
             total: storeSubtotal + 1500
@@ -162,6 +175,69 @@ const CartPage = () => {
                       <label className="text-sm font-medium text-foreground font-body">Notas (opcional)</label>
                       <Input value={deliveryNotes} onChange={(e) => setDeliveryNotes(e.target.value)} placeholder="Ex: Apartamento 3B, tocar campainha" className="mt-1 rounded-xl" />
                     </div>
+
+                    <div className="pt-4 border-t border-border space-y-4">
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm font-medium text-foreground font-body cursor-pointer flex-1" htmlFor="substitution">
+                          Aceita substituição caso falte produto?
+                          <p className="text-[10px] text-muted-foreground font-normal">A loja sugerirá uma alternativa se algo estiver indisponível.</p>
+                        </label>
+                        <input
+                          id="substitution"
+                          type="checkbox"
+                          checked={acceptSubstitution}
+                          onChange={(e) => setAcceptSubstitution(e.target.checked)}
+                          className="h-5 w-5 rounded border-border text-accent focus:ring-accent"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-foreground font-body">Tipo de Entrega</label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <Button
+                            type="button"
+                            variant={deliveryType === "immediate" ? "default" : "outline"}
+                            onClick={() => setDeliveryType("immediate")}
+                            className={`rounded-xl h-10 text-xs font-body ${deliveryType === "immediate" ? "bg-accent text-accent-foreground" : ""}`}
+                          >
+                            Imediata
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={deliveryType === "scheduled" ? "default" : "outline"}
+                            onClick={() => setDeliveryType("scheduled")}
+                            className={`rounded-xl h-10 text-xs font-body ${deliveryType === "scheduled" ? "bg-accent text-accent-foreground" : ""}`}
+                          >
+                            Agendada
+                          </Button>
+                        </div>
+                      </div>
+
+                      {deliveryType === "scheduled" && (
+                        <div className="grid grid-cols-2 gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-medium text-muted-foreground ml-1">Data</label>
+                            <Input
+                              type="date"
+                              value={scheduledDate}
+                              onChange={(e) => setScheduledDate(e.target.value)}
+                              className="rounded-xl h-10 text-xs"
+                              min={new Date().toISOString().split("T")[0]}
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <label className="text-[10px] font-medium text-muted-foreground ml-1">Hora</label>
+                            <Input
+                              type="time"
+                              value={scheduledTime}
+                              onChange={(e) => setScheduledTime(e.target.value)}
+                              className="rounded-xl h-10 text-xs"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
                     <div className="space-y-2 pt-4 border-t border-border font-body text-sm">
                       <div className="flex justify-between"><span className="text-muted-foreground">Subtotal</span><span className="text-card-foreground font-medium">{subtotal.toLocaleString("pt-AO")} Kz</span></div>
                       <div className="flex justify-between"><span className="text-muted-foreground">Entrega (K)</span><span className="text-card-foreground font-medium">{deliveryFee.toLocaleString("pt-AO")} Kz</span></div>

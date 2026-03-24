@@ -370,25 +370,39 @@ const ClientOrders = ({ onNewOrder }: { onNewOrder: () => void }) => {
     const matchesSearch = order.stores?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       order.id.toLowerCase().includes(searchQuery.toLowerCase());
 
-    let matchesFilter = true;
-    if (filter === "active") {
-      matchesFilter = ["Pendente", "Em preparação", "A caminho"].includes(order.status);
-    } else if (filter === "delivered") {
-      matchesFilter = order.status === "Entregue";
-    } else if (filter === "cancelled") {
-      matchesFilter = order.status === "Cancelado";
-    }
-
+    const matchesFilter = true;
+    // Update filter logic if needed, for now all shows all
     return matchesSearch && matchesFilter;
   });
 
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case "pending": return "Aguardando Validação";
+      case "validating": return "Em Validação";
+      case "awaiting_payment": return "Aguardando Pagamento";
+      case "paid": return "Pago";
+      case "preparing": return "Em Preparação";
+      case "ready_for_delivery": return "Preparado";
+      case "in_transit": return "Em Transporte";
+      case "delivered": return "Entregue";
+      case "completed": return "Concluído";
+      case "cancelled": return "Cancelado";
+      default: return status;
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "Pendente": return "bg-zinc-100 text-zinc-600";
-      case "Em preparação": return "bg-amber-100 text-amber-700";
-      case "A caminho": return "bg-blue-100 text-blue-700";
-      case "Entregue": return "bg-emerald-100 text-emerald-700";
-      case "Cancelado": return "bg-red-100 text-red-700";
+      case "pending": return "bg-zinc-100 text-zinc-600";
+      case "validating": return "bg-zinc-100 text-zinc-600";
+      case "awaiting_payment": return "bg-orange-100 text-orange-700";
+      case "paid": return "bg-blue-100 text-blue-700";
+      case "preparing": return "bg-purple-100 text-purple-700";
+      case "ready_for_delivery": return "bg-emerald-100 text-emerald-700";
+      case "in_transit": return "bg-blue-100 text-blue-700";
+      case "delivered": return "bg-emerald-500 text-white";
+      case "completed": return "bg-gray-100 text-gray-700";
+      case "cancelled": return "bg-red-100 text-red-700";
       default: return "bg-muted text-muted-foreground";
     }
   };
@@ -419,7 +433,7 @@ const ClientOrders = ({ onNewOrder }: { onNewOrder: () => void }) => {
               </div>
             </div>
             <div className={`px-4 py-1.5 rounded-full text-xs font-body font-bold text-center ${getStatusColor(selectedOrder.status)}`}>
-              {selectedOrder.status}
+              {getStatusLabel(selectedOrder.status)}
             </div>
           </div>
 
@@ -469,6 +483,30 @@ const ClientOrders = ({ onNewOrder }: { onNewOrder: () => void }) => {
               <p>{selectedOrder.delivery_address || "Endereço não especificado"}</p>
             </div>
           </div>
+
+          {selectedOrder.status === "delivered" && (
+            <div className="mt-8 pt-6 border-t border-border">
+              <Button
+                onClick={async () => {
+                  const { error } = await supabase
+                    .from("orders")
+                    .update({ status: "completed" })
+                    .eq("id", selectedOrder.id);
+
+                  if (error) {
+                    toast.error("Erro ao confirmar receção");
+                  } else {
+                    toast.success("Receção confirmada! Obrigado.");
+                    setSelectedOrder({ ...selectedOrder, status: "completed" });
+                    setOrders(orders.map(o => o.id === selectedOrder.id ? { ...o, status: "completed" } : o));
+                  }
+                }}
+                className="w-full rounded-2xl h-12 gap-2 font-display bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-500/20"
+              >
+                <Package className="h-5 w-5" /> Confirmar Receção
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -544,7 +582,7 @@ const ClientOrders = ({ onNewOrder }: { onNewOrder: () => void }) => {
                   </div>
                 </div>
                 <span className={`text-[10px] font-body font-bold px-3 py-1 rounded-full ${getStatusColor(order.status)}`}>
-                  {order.status}
+                  {getStatusLabel(order.status)}
                 </span>
               </div>
 
