@@ -4,7 +4,7 @@ import DashboardShell from "@/components/DashboardShell";
 import BottomNav, { BottomNavItem } from "@/components/BottomNav";
 import StatCard from "@/components/StatCard";
 import AnimatedTabContent from "@/components/AnimatedTabContent";
-import { Users, Store, Package, MapPin, ShieldCheck, TrendingUp, Settings, BarChart3, Bell, Search, ChevronRight, Star, Eye, CheckCircle2, XCircle, Clock, AlertCircle, Edit, Shield, Mail, Phone, Save, Trash2, LogOut, Loader2, Truck } from "lucide-react";
+import { Users, Store, Package, MapPin, ShieldCheck, TrendingUp, Settings, BarChart3, Bell, Search, ChevronRight, Star, Eye, CheckCircle2, XCircle, Clock, AlertCircle, Edit, Shield, Mail, Phone, Save, Trash2, LogOut, Loader2, Truck, Timer, StickyNote } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useDemoAuth } from "@/contexts/DemoAuthContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -518,6 +518,8 @@ const AdminOrders = ({ onOrderTotalUpdate }: { onOrderTotalUpdate?: (count: numb
   const [page, setPage] = useState(1);
   const [totalOrders, setTotalOrders] = useState(0);
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+  const [orderItems, setOrderItems] = useState<any[]>([]);
+  const [loadingItems, setLoadingItems] = useState(false);
   const [couriers, setCouriers] = useState<any[]>([]);
   const [isAssigning, setIsAssigning] = useState(false);
   const ITEMS_PER_PAGE = 5;
@@ -531,6 +533,22 @@ const AdminOrders = ({ onOrderTotalUpdate }: { onOrderTotalUpdate?: (count: numb
       setCouriers(data?.filter((u: any) => u.role === "logistics") || []);
     } catch (err) {
       console.error("Erro ao buscar transportadores:", err);
+    }
+  };
+
+  const fetchOrderItems = async (orderId: string) => {
+    setLoadingItems(true);
+    try {
+      const { data, error } = await supabase
+        .from("order_items")
+        .select("*")
+        .eq("order_id", orderId);
+      if (error) throw error;
+      setOrderItems(data || []);
+    } catch (err: any) {
+      console.error("Erro ao buscar itens da encomenda:", err);
+    } finally {
+      setLoadingItems(false);
     }
   };
 
@@ -688,11 +706,14 @@ const AdminOrders = ({ onOrderTotalUpdate }: { onOrderTotalUpdate?: (count: numb
                   <Button variant="outline" size="sm" className="h-7 text-[10px] rounded-lg" onClick={async (e) => { 
                     e.stopPropagation(); 
                     setSelectedOrder(o);
+                    fetchOrderItems(o.id);
                     if (!o.seen_by_admin) {
                       await supabase.from('orders').update({ seen_by_admin: true }).eq('id', o.id);
                       // Update local state to reflect seen status
                       setOrders(prev => prev.map(order => order.id === o.id ? { ...order, seen_by_admin: true } : order));
-                      setNewOrdersCount(prev => Math.max(0, prev - 1));
+                      if (typeof setNewOrdersCount === 'function') {
+                        setNewOrdersCount((prev: number) => Math.max(0, prev - 1));
+                      }
                     }
                   }}>
                     Ver Detalhes / Atribuir
@@ -711,64 +732,157 @@ const AdminOrders = ({ onOrderTotalUpdate }: { onOrderTotalUpdate?: (count: numb
                     <XCircle className="h-5 w-5" />
                   </Button>
                 </div>
-                <div className="p-4 overflow-y-auto space-y-4">
-                  <div className="space-y-2">
-                    <p className="text-sm font-semibold text-foreground">Informação Geral</p>
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div className="p-2 bg-muted/50 rounded-lg">
-                        <p className="text-muted-foreground">Encomenda</p>
-                        <p className="font-bold">#{selectedOrder.id.substring(0, 8).toUpperCase()}</p>
-                      </div>
-                      <div className="p-2 bg-muted/50 rounded-lg">
-                        <p className="text-muted-foreground">Estado</p>
-                        <p className="font-bold">{statusLabels[selectedOrder.status] || selectedOrder.status}</p>
-                      </div>
+                <div className="p-4 overflow-y-auto space-y-5 custom-scrollbar">
+                  {/* General Info & Customer */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3 bg-muted/30 rounded-xl border border-border/50">
+                      <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-1">Encomenda</p>
+                      <p className="text-sm font-bold text-foreground">#{selectedOrder.id.substring(0, 8).toUpperCase()}</p>
+                      <p className="text-[10px] text-muted-foreground mt-1">
+                        {new Date(selectedOrder.created_at).toLocaleDateString('pt-AO')} às {new Date(selectedOrder.created_at).toLocaleTimeString('pt-AO', { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+                    <div className="p-3 bg-muted/30 rounded-xl border border-border/50">
+                      <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-1">Estado</p>
+                      <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full inline-block ${statusColors[selectedOrder.status]}`}>
+                        {statusLabels[selectedOrder.status] || selectedOrder.status}
+                      </span>
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <p className="text-sm font-semibold text-foreground">Entrega</p>
-                    <div className="p-3 bg-muted/50 rounded-lg space-y-1 text-xs">
-                      <p className="flex items-center gap-2"><MapPin className="h-3 w-3 text-red-500" /> {selectedOrder.delivery_address || 'Endereço não fornecido'}</p>
-                      {selectedOrder.delivery_notes && <p className="text-muted-foreground mt-1 italic">"{selectedOrder.delivery_notes}"</p>}
-                    </div>
+                  <div className="p-3 bg-purple-50/50 border border-purple-100 rounded-xl">
+                    <p className="text-[10px] uppercase font-bold text-purple-600 tracking-wider mb-2 flex items-center gap-1">
+                      <Users className="h-3 w-3" /> Cliente
+                    </p>
+                    <p className="text-sm font-bold text-foreground">{selectedOrder.profiles?.full_name || 'Desconhecido'}</p>
+                    <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-1">
+                      <Phone className="h-3 w-3" /> {selectedOrder.profiles?.phone || 'N/D'}
+                    </p>
                   </div>
 
-                  <div className="space-y-2">
-                    <p className="text-sm font-semibold text-foreground">Atribuir Transportador</p>
-                    <div className="space-y-2">
-                      {couriers.length === 0 ? (
-                        <p className="text-xs text-muted-foreground bg-amber-50 p-3 rounded-lg border border-amber-100 italic">Nenhum transportador disponível no momento.</p>
-                      ) : (
-                        <div className="grid grid-cols-1 gap-2 max-h-40 overflow-y-auto pr-1">
-                          {couriers.map((courier) => (
-                            <div 
-                              key={courier.id} 
-                              className={`flex items-center justify-between p-2 rounded-xl border transition-all ${selectedOrder.logistics_id === courier.id ? 'border-emerald-500 bg-emerald-50/50' : 'border-border hover:bg-muted/50'}`}
-                            >
-                              <div className="flex items-center gap-2 overflow-hidden">
-                                <div className="h-7 w-7 rounded-full bg-emerald-100 flex items-center justify-center text-[10px] font-bold text-emerald-700 shrink-0">
-                                  {courier.full_name?.substring(0, 2).toUpperCase() || "TR"}
-                                </div>
-                                <div className="truncate">
-                                  <p className="text-xs font-bold truncate">{courier.full_name || 'Sem nome'}</p>
-                                  <p className="text-[10px] text-muted-foreground truncate">{courier.phone || 'Sem telefone'}</p>
-                                </div>
-                              </div>
-                              <Button 
-                                size="sm" 
-                                variant={selectedOrder.logistics_id === courier.id ? "ghost" : "default"} 
-                                className={`h-7 text-[10px] px-2 rounded-lg ${selectedOrder.logistics_id === courier.id ? 'text-emerald-600' : 'bg-emerald-500 hover:bg-emerald-600'}`}
-                                onClick={() => handleAssignCourier(selectedOrder.id, courier.id)}
-                                disabled={isAssigning || selectedOrder.logistics_id === courier.id}
-                              >
-                                {selectedOrder.logistics_id === courier.id ? 'Atribuído' : 'Atribuir'}
-                              </Button>
+                  {/* Order Items */}
+                  <div className="space-y-3">
+                    <p className="text-xs font-bold text-foreground flex items-center gap-2">
+                      <Package className="h-4 w-4 text-purple-600" /> Itens do Pedido
+                    </p>
+                    {loadingItems ? (
+                      <div className="flex justify-center py-4"><Loader2 className="animate-spin text-purple-600 h-6 w-6" /></div>
+                    ) : (
+                      <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                        {orderItems.map((item) => (
+                          <div key={item.id} className="flex items-center gap-3 p-2 bg-card border border-border/50 rounded-xl">
+                            <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center overflow-hidden shrink-0 border border-border/30">
+                              {item.product_image ? (
+                                <img src={item.product_image} alt={item.product_name} className="w-full h-full object-cover" />
+                              ) : (
+                                <Package className="h-4 w-4 text-muted-foreground" />
+                              )}
                             </div>
-                          ))}
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[11px] font-bold text-foreground truncate">{item.product_name}</p>
+                              <p className="text-[10px] text-muted-foreground">{item.quantity}x unidades · {Number(item.unit_price).toLocaleString()} Kz</p>
+                            </div>
+                            <div className="text-[11px] font-black text-foreground shrink-0">
+                              {Number(item.total_price).toLocaleString()} Kz
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Pricing Breakdown */}
+                  <div className="p-4 bg-muted/20 rounded-xl border border-border/50 space-y-2">
+                    <div className="flex justify-between text-xs font-body text-muted-foreground">
+                      <span>Subtotal</span>
+                      <span className="font-medium">{Number(selectedOrder.subtotal).toLocaleString()} Kz</span>
+                    </div>
+                    <div className="flex justify-between text-xs font-body text-muted-foreground">
+                      <span>Taxa de Entrega</span>
+                      <span className="font-medium">{Number(selectedOrder.delivery_fee).toLocaleString()} Kz</span>
+                    </div>
+                    <div className="flex justify-between text-sm font-display font-bold text-foreground pt-2 border-t border-border/50">
+                      <span>Total</span>
+                      <span className="text-purple-600">{Number(selectedOrder.total).toLocaleString()} Kz</span>
+                    </div>
+                  </div>
+
+                  {/* Delivery & Preferences */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="p-3 bg-blue-50/30 border border-blue-100 rounded-xl space-y-2">
+                      <p className="text-[10px] uppercase font-bold text-blue-600 tracking-wider flex items-center gap-1">
+                        <MapPin className="h-3 w-3" /> Entrega
+                      </p>
+                      <p className="text-[11px] font-medium text-foreground leading-relaxed">{selectedOrder.delivery_address || 'Endereço não fornecido'}</p>
+                      {selectedOrder.delivery_notes && (
+                        <div className="bg-white/50 p-2 rounded-lg border border-blue-100 mt-1">
+                          <p className="text-[10px] text-blue-800 italic flex gap-1 items-start">
+                            <StickyNote className="h-2.5 w-2.5 shrink-0 mt-0.5" /> "{selectedOrder.delivery_notes}"
+                          </p>
                         </div>
                       )}
                     </div>
+
+                    <div className="p-3 bg-emerald-50/30 border border-emerald-100 rounded-xl space-y-2">
+                      <p className="text-[10px] uppercase font-bold text-emerald-600 tracking-wider flex items-center gap-1">
+                        <ShieldCheck className="h-3 w-3" /> Preferências
+                      </p>
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] text-muted-foreground">Substituição:</span>
+                          <span className={`text-[10px] font-bold ${selectedOrder.accept_substitution ? 'text-emerald-600' : 'text-amber-600'}`}>
+                            {selectedOrder.accept_substitution ? 'Aceita' : 'Não Aceita'}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] text-muted-foreground">Tipo:</span>
+                          <span className="text-[10px] font-bold text-blue-600 uppercase">{selectedOrder.delivery_type === 'scheduled' ? 'Agendada' : 'Imediata'}</span>
+                        </div>
+                        {selectedOrder.delivery_type === 'scheduled' && (
+                          <div className="bg-blue-100/50 p-1.5 rounded-md mt-1 text-[9px] font-bold text-blue-800 flex items-center gap-1">
+                            <Timer className="h-2.5 w-2.5" /> {selectedOrder.scheduled_date} às {selectedOrder.scheduled_time}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Assign Logistics */}
+                  <div className="pt-4 border-t border-border">
+                    <p className="text-xs font-bold text-foreground mb-3 flex items-center gap-2">
+                      <Truck className="h-4 w-4 text-emerald-600" /> Atribuir Transportador
+                    </p>
+                    {couriers.length === 0 ? (
+                      <p className="text-xs text-muted-foreground bg-amber-50 p-3 rounded-xl border border-amber-100 italic">Nenhum transportador disponível.</p>
+                    ) : (
+                      <div className="space-y-2 max-h-32 overflow-y-auto pr-2 custom-scrollbar">
+                        {couriers.map((courier) => (
+                          <div 
+                            key={courier.id} 
+                            className={`flex items-center justify-between p-2 rounded-xl border transition-all ${selectedOrder.logistics_id === courier.id ? 'border-emerald-500 bg-emerald-50/50' : 'border-border hover:bg-muted/50'}`}
+                          >
+                            <div className="flex items-center gap-2 overflow-hidden">
+                              <div className="h-7 w-7 rounded-full bg-emerald-100 flex items-center justify-center text-[10px] font-bold text-emerald-700 shrink-0">
+                                {courier.full_name?.substring(0, 2).toUpperCase() || "TR"}
+                              </div>
+                              <div className="truncate">
+                                <p className="text-[10px] font-bold truncate">{courier.full_name || 'Sem nome'}</p>
+                                <p className="text-[9px] text-muted-foreground truncate">{courier.phone || 'Sem telefone'}</p>
+                              </div>
+                            </div>
+                            <Button 
+                              size="sm" 
+                              variant={selectedOrder.logistics_id === courier.id ? "ghost" : "default"} 
+                              className={`h-7 text-[9px] px-3 rounded-lg ${selectedOrder.logistics_id === courier.id ? 'text-emerald-600' : 'bg-emerald-500 hover:bg-emerald-600'}`}
+                              onClick={() => handleAssignCourier(selectedOrder.id, courier.id)}
+                              disabled={isAssigning || selectedOrder.logistics_id === courier.id}
+                            >
+                              {selectedOrder.logistics_id === courier.id ? 'Atribuído' : 'Atribuir'}
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

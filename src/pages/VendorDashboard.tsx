@@ -4,7 +4,7 @@ import DashboardShell from "@/components/DashboardShell";
 import BottomNav, { BottomNavItem } from "@/components/BottomNav";
 import StatCard from "@/components/StatCard";
 import AnimatedTabContent from "@/components/AnimatedTabContent";
-import { Package, ShoppingCart, Star, TrendingUp, Plus, BarChart3, Settings, MessageSquare, Grid3X3, Store, Eye, Clock, Edit, Trash2, MapPin, Phone, Mail, Save, LogOut, ToggleLeft, ToggleRight, Loader2, UserPlus, Search, X } from "lucide-react";
+import { Package, ShoppingCart, Star, TrendingUp, Plus, BarChart3, Settings, MessageSquare, Grid3X3, Store, Eye, Clock, Edit, Trash2, MapPin, Phone, Mail, Save, LogOut, ToggleLeft, ToggleRight, Loader2, UserPlus, Search, X, ShieldCheck, CheckCircle2, Truck, Timer, StickyNote, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import AddProductDialog, { type Product } from "@/components/vendor/AddProductDialog";
 import StoreSetupDialog from "@/components/vendor/StoreSetupDialog";
@@ -13,6 +13,17 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { useDemoAuth } from "@/contexts/DemoAuthContext";
 import { useAuth } from "@/contexts/AuthContext";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { AlertCircle } from "lucide-react";
 import { useDisplayUser } from "@/hooks/useDisplayUser";
 import { supabase } from "@/integrations/supabase/client";
 import heroVendor from "@/assets/hero-vendor.jpg";
@@ -263,6 +274,8 @@ const VendorProducts = ({ storeId, onUpdate, isAddProductOpen, setIsAddProductOp
   const [editIndex, setEditIndex] = useState<number | null>(null);
   const [activeFilter, setActiveFilter] = useState("Todos");
   const [searchQuery, setSearchQuery] = useState("");
+  const [productToDelete, setProductToDelete] = useState<any | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   useEffect(() => {
     fetchProducts();
@@ -357,31 +370,32 @@ const VendorProducts = ({ storeId, onUpdate, isAddProductOpen, setIsAddProductOp
     }
   };
 
-  const handleDelete = async (index: number) => {
-    const realIndex = products.indexOf(filtered[index]);
-    const productToDelete = products[realIndex];
+  const confirmDelete = async () => {
+    if (!productToDelete) return;
 
-    const { data: existingProducts } = await supabase
-      .from("products")
-      .select("id")
-      .eq("store_id", storeId)
-      .eq("name", productToDelete.name)
-      .maybeSingle();
-
-    if (existingProducts?.id) {
+    try {
       const { error } = await supabase
         .from("products")
         .delete()
-        .eq("id", existingProducts.id);
+        .eq("id", productToDelete.id);
 
-      if (error) {
-        toast.error("Erro ao remover produto");
-        return;
-      }
-      toast.success("Produto removido");
+      if (error) throw error;
+
+      toast.success("Produto removido com sucesso");
       fetchProducts();
       if (onUpdate) onUpdate();
+      setIsDeleteDialogOpen(false);
+      setProductToDelete(null);
+    } catch (err: any) {
+      console.error("Erro ao apagar produto:", err);
+      toast.error("Erro ao remover produto");
     }
+  };
+
+  const handleDelete = (index: number) => {
+    const realIndex = products.indexOf(filtered[index]);
+    setProductToDelete(products[realIndex]);
+    setIsDeleteDialogOpen(true);
   };
 
   const handleToggleActive = async (index: number) => {
@@ -490,6 +504,32 @@ const VendorProducts = ({ storeId, onUpdate, isAddProductOpen, setIsAddProductOp
         editProduct={editIndex !== null ? products[editIndex] : null}
         storeId={storeId}
       />
+
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent className="rounded-2xl border-border">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-display font-bold text-xl text-foreground flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-destructive" /> Confirmar Remoção
+            </AlertDialogTitle>
+            <AlertDialogDescription className="font-body text-muted-foreground text-sm">
+              Tem certeza que deseja remover o produto <span className="font-bold text-foreground">"{productToDelete?.name}"</span>? 
+              <br /><br />
+              <span className="bg-destructive/10 text-destructive px-3 py-2 rounded-lg block text-xs border border-destructive/20 italic">
+                Esta ação é permanente e o produto deixará de estar disponível para os clientes.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:gap-0">
+            <AlertDialogCancel className="rounded-xl font-body border-border hover:bg-muted">Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDelete}
+              className="rounded-xl font-body bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Confirmar e Remover
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
@@ -499,6 +539,8 @@ const VendorOrders = ({ storeId, onUpdate }: { storeId: string, onUpdate: () => 
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+  const [orderItems, setOrderItems] = useState<any[]>([]);
+  const [loadingItems, setLoadingItems] = useState(false);
 
   const fetchOrders = async () => {
     setLoading(true);
@@ -519,6 +561,22 @@ const VendorOrders = ({ storeId, onUpdate }: { storeId: string, onUpdate: () => 
       setOrders(data || []);
     }
     setLoading(false);
+  };
+
+  const fetchOrderItems = async (orderId: string) => {
+    setLoadingItems(true);
+    try {
+      const { data, error } = await supabase
+        .from("order_items")
+        .select("*")
+        .eq("order_id", orderId);
+      if (error) throw error;
+      setOrderItems(data || []);
+    } catch (err: any) {
+      console.error("Erro ao buscar itens da encomenda:", err);
+    } finally {
+      setLoadingItems(false);
+    }
   };
 
   useEffect(() => {
@@ -595,6 +653,7 @@ const VendorOrders = ({ storeId, onUpdate }: { storeId: string, onUpdate: () => 
                         onUpdate(); // This will refresh the counters in the parent
                       }
                       setSelectedOrder(o);
+                      fetchOrderItems(o.id);
                     }}>Detalhes</Button>
                     {o.status === "pending" && (
                       <>
@@ -631,41 +690,111 @@ const VendorOrders = ({ storeId, onUpdate }: { storeId: string, onUpdate: () => 
               </Button>
             </div>
             <div className="p-4 overflow-y-auto space-y-4">
-              <div className="space-y-2">
-                <p className="text-sm font-semibold text-foreground">Informação Geral</p>
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="p-2 bg-muted/50 rounded-lg">
-                    <p className="text-muted-foreground">Estado</p>
-                    <p className="font-bold">{getStatusDisplay(selectedOrder.status).label}</p>
-                  </div>
-                  <div className="p-2 bg-muted/50 rounded-lg">
-                    <p className="text-muted-foreground">Total</p>
-                    <p className="font-bold">{Number(selectedOrder.total).toLocaleString("pt-AO")} Kz</p>
-                  </div>
+            <div className="p-4 overflow-y-auto space-y-5 custom-scrollbar">
+              {/* General Info & Status */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3 bg-muted/30 rounded-xl border border-border/50">
+                  <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-1">Estado Atual</p>
+                  <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full inline-block ${getStatusDisplay(selectedOrder.status).color}`}>
+                    {getStatusDisplay(selectedOrder.status).label}
+                  </span>
+                </div>
+                <div className="p-3 bg-muted/30 rounded-xl border border-border/50 text-right">
+                  <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-1">Total</p>
+                  <p className="text-sm font-black text-amber-600">{Number(selectedOrder.total).toLocaleString("pt-AO")} Kz</p>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <p className="text-sm font-semibold text-foreground">Entrega</p>
-                <div className="p-3 bg-muted/50 rounded-lg space-y-1 text-xs">
-                  <p className="flex items-center gap-2"><Clock className="h-3 w-3" /> {selectedOrder.delivery_type === 'immediate' ? 'Imediata' : `Agendada: ${selectedOrder.scheduled_date} às ${selectedOrder.scheduled_time}`}</p>
-                  <p className="flex items-center gap-2"><MapPin className="h-3 w-3" /> {selectedOrder.delivery_address || 'Não especificado'}</p>
-                  <p className="flex items-center gap-2 font-medium">Substituição: {selectedOrder.accept_substitution ? '✅ Aceita' : '❌ Não aceita'}</p>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <p className="text-sm font-semibold text-foreground">Notas do Cliente</p>
-                <p className="text-xs p-3 bg-muted/30 rounded-lg italic text-muted-foreground">
-                  {selectedOrder.delivery_notes || "Sem notas adicionais."}
+              {/* Customer Info */}
+              <div className="p-3 bg-amber-50/50 border border-amber-100 rounded-xl">
+                <p className="text-[10px] uppercase font-bold text-amber-600 tracking-wider mb-2 flex items-center gap-1">
+                  <Users className="h-3 w-3" /> Cliente
                 </p>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-bold text-foreground">{selectedOrder.profiles?.full_name || 'Cliente'}</p>
+                  <button className="p-1.5 rounded-lg bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 transition-colors">
+                    <Phone className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               </div>
 
+              {/* Order Items */}
+              <div className="space-y-3">
+                <p className="text-xs font-bold text-foreground flex items-center gap-2">
+                  <Package className="h-4 w-4 text-amber-600" /> Itens do Pedido
+                </p>
+                {loadingItems ? (
+                  <div className="flex justify-center py-4"><Loader2 className="animate-spin text-amber-600 h-6 w-6" /></div>
+                ) : (
+                  <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
+                    {orderItems.map((item) => (
+                      <div key={item.id} className="flex items-center gap-3 p-2 bg-card border border-border/50 rounded-xl">
+                        <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center overflow-hidden shrink-0 border border-border/30">
+                          {item.product_image ? (
+                            <img src={item.product_image} alt={item.product_name} className="w-full h-full object-cover" />
+                          ) : (
+                            <Package className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[11px] font-bold text-foreground truncate">{item.product_name}</p>
+                          <p className="text-[10px] text-muted-foreground">{item.quantity}x unidades · {Number(item.unit_price).toLocaleString()} Kz</p>
+                        </div>
+                        <div className="text-[11px] font-black text-foreground shrink-0">
+                          {Number(item.total_price).toLocaleString()} Kz
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Delivery & Preferences */}
+              <div className="grid grid-cols-1 gap-3">
+                <div className="p-3 bg-blue-50/30 border border-blue-100 rounded-xl space-y-2">
+                  <p className="text-[10px] uppercase font-bold text-blue-600 tracking-wider flex items-center gap-1">
+                    <MapPin className="h-3 w-3" /> Entrega
+                  </p>
+                  <p className="text-[11px] font-medium text-foreground leading-relaxed">{selectedOrder.delivery_address || 'Endereço não fornecido'}</p>
+                  {selectedOrder.delivery_notes && (
+                    <div className="bg-white/50 p-2 rounded-lg border border-blue-100 mt-1">
+                      <p className="text-[10px] text-blue-800 italic flex gap-1 items-start">
+                        <StickyNote className="h-2.5 w-2.5 shrink-0 mt-0.5" /> "{selectedOrder.delivery_notes}"
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="p-3 bg-emerald-50/30 border border-emerald-100 rounded-xl space-y-2">
+                  <p className="text-[10px] uppercase font-bold text-emerald-600 tracking-wider flex items-center gap-1">
+                    <ShieldCheck className="h-3 w-3" /> Preferências do Cliente
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="p-2 bg-white/50 rounded-lg border border-emerald-100">
+                      <span className="text-[9px] text-muted-foreground block">Substituição</span>
+                      <span className={`text-[10px] font-bold ${selectedOrder.accept_substitution ? 'text-emerald-600' : 'text-amber-600'}`}>
+                        {selectedOrder.accept_substitution ? 'Aceita Sugestão' : 'Não Aceita'}
+                      </span>
+                    </div>
+                    <div className="p-2 bg-white/50 rounded-lg border border-emerald-100">
+                      <span className="text-[9px] text-muted-foreground block">Urgência</span>
+                      <span className="text-[10px] font-bold text-blue-600 uppercase">{selectedOrder.delivery_type === 'scheduled' ? 'Agendada' : 'Imediata'}</span>
+                    </div>
+                  </div>
+                  {selectedOrder.delivery_type === 'scheduled' && (
+                    <div className="bg-blue-100/50 p-2 rounded-lg text-[10px] font-bold text-blue-800 flex items-center justify-center gap-2">
+                      <Timer className="h-3 w-3" /> {selectedOrder.scheduled_date} às {selectedOrder.scheduled_time}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Status Actions */}
               {selectedOrder.status === "pending" && (
-                <div className="pt-4 flex gap-2">
+                <div className="pt-2 flex gap-2">
                   <Button
                     variant="outline"
-                    className="flex-1 rounded-xl text-xs font-body border-red-200 text-red-600"
+                    className="flex-1 rounded-xl text-xs font-body border-red-200 text-red-600 hover:bg-red-50"
                     onClick={() => {
                       handleUpdateStatus(selectedOrder.id, "cancelled");
                       setSelectedOrder(null);
@@ -674,7 +803,7 @@ const VendorOrders = ({ storeId, onUpdate }: { storeId: string, onUpdate: () => 
                     Rejeitar
                   </Button>
                   <Button
-                    className="flex-1 rounded-xl text-xs font-body bg-gradient-to-r from-amber-500 to-orange-500 text-white"
+                    className="flex-1 rounded-xl text-xs font-body bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md hover:shadow-lg transition-all"
                     onClick={() => {
                       handleUpdateStatus(selectedOrder.id, "awaiting_payment");
                       setSelectedOrder(null);
@@ -684,6 +813,7 @@ const VendorOrders = ({ storeId, onUpdate }: { storeId: string, onUpdate: () => 
                   </Button>
                 </div>
               )}
+            </div>
             </div>
           </div>
         </div>

@@ -4,7 +4,7 @@ import DashboardShell from "@/components/DashboardShell";
 import BottomNav, { BottomNavItem } from "@/components/BottomNav";
 import StatCard from "@/components/StatCard";
 import AnimatedTabContent from "@/components/AnimatedTabContent";
-import { Truck, Package, MapPin, Clock, BarChart3, Navigation, CheckCircle2, Settings, Phone, Star, ChevronRight, AlertCircle, Fuel, Route, User, Calendar, Shield, Bell, Edit, Save, LogOut, XCircle, Loader2 } from "lucide-react";
+import { Truck, Package, MapPin, Clock, BarChart3, Navigation, CheckCircle2, Settings, Phone, Star, ChevronRight, AlertCircle, Fuel, Route, User, Calendar, Shield, Bell, Edit, Save, LogOut, XCircle, Loader2, Timer, StickyNote, ShieldCheck, Users, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useDemoAuth } from "@/contexts/DemoAuthContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -238,6 +238,9 @@ const LogisticsDeliveries = ({ onUpdate }: { onUpdate?: () => void }) => {
   const [filter, setFilter] = useState("pending");
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
+  const [orderItems, setOrderItems] = useState<any[]>([]);
+  const [loadingItems, setLoadingItems] = useState(false);
   const { toast } = useToast();
 
   const fetchOrders = async () => {
@@ -257,6 +260,22 @@ const LogisticsDeliveries = ({ onUpdate }: { onUpdate?: () => void }) => {
       setOrders(data || []);
     }
     setLoading(false);
+  };
+
+  const fetchOrderItems = async (orderId: string) => {
+    setLoadingItems(true);
+    try {
+      const { data, error } = await supabase
+        .from("order_items")
+        .select("*")
+        .eq("order_id", orderId);
+      if (error) throw error;
+      setOrderItems(data || []);
+    } catch (err: any) {
+      console.error("Erro ao buscar itens da encomenda:", err);
+    } finally {
+      setLoadingItems(false);
+    }
   };
 
   useEffect(() => {
@@ -296,7 +315,7 @@ const LogisticsDeliveries = ({ onUpdate }: { onUpdate?: () => void }) => {
     <div className="space-y-5">
       <h2 className="font-display text-2xl font-bold text-foreground">Entregas</h2>
       <div className="flex gap-2">
-        {[["pending","Novas Atribuídas"],["transit","Em curso"],["all","Todas"]].map(([k,v]) => (
+        {Object.entries({"pending":"Novas Atribuídas","transit":"Em curso","all":"Todas"}).map(([k,v]) => (
           <button key={k} onClick={() => setFilter(k)} className={`px-3 py-1.5 rounded-full text-xs font-body font-medium transition-all ${filter === k ? "bg-accent text-accent-foreground shadow-sm" : "bg-card text-muted-foreground border border-border hover:border-accent/50"}`}>{v}</button>
         ))}
       </div>
@@ -323,27 +342,170 @@ const LogisticsDeliveries = ({ onUpdate }: { onUpdate?: () => void }) => {
                 <p className="text-xs font-body text-muted-foreground">Loja: <span className="text-foreground font-semibold">{d.stores?.name || 'Loja'}</span></p>
                 <p className="text-xs font-body text-muted-foreground">Cliente: <span className="text-foreground font-semibold">{d.profiles?.full_name || 'Cliente'}</span></p>
                 <p className="text-xs font-body text-muted-foreground flex items-center gap-1"><MapPin className="h-3 w-3" /> {d.delivery_address}</p>
-                <p className="text-xs font-body text-muted-foreground flex items-center gap-1"><Phone className="h-3 w-3" /> {d.profiles?.phone || 'Sem contacto'}</p>
               </div>
               <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
                 <span className="font-body font-bold text-foreground">{Number(d.total).toLocaleString('pt-AO')} Kz</span>
                 <div className="flex gap-2">
-                  {d.logistics_status === 'assigned' ? (
-                    <>
-                      <Button onClick={() => handleUpdateLogisticsStatus(d.id, 'rejected')} size="sm" variant="outline" className="rounded-xl h-8 text-xs font-body border-red-200 text-red-600 hover:bg-red-50"><XCircle className="h-3 w-3" /> Recusar</Button>
-                      <Button onClick={() => handleUpdateLogisticsStatus(d.id, 'accepted')} size="sm" className="rounded-xl h-8 text-xs font-body bg-emerald-500 hover:bg-emerald-600 text-white"><CheckCircle2 className="h-3 w-3" /> Aceitar</Button>
-                    </>
-                  ) : d.logistics_status === 'accepted' ? (
-                    <Button onClick={() => handleUpdateLogisticsStatus(d.id, 'in_transit')} size="sm" className="rounded-xl h-8 text-xs font-body bg-blue-500 hover:bg-blue-600 text-white"><Navigation className="h-3 w-3" /> Iniciar Entrega</Button>
-                  ) : d.logistics_status === 'in_transit' ? (
-                    <Button onClick={() => handleUpdateLogisticsStatus(d.id, 'delivered')} size="sm" className="rounded-xl h-8 text-xs font-body bg-emerald-500 hover:bg-emerald-600 text-white"><CheckCircle2 className="h-3 w-3" /> Finalizar Entrega</Button>
-                  ) : null}
+                  <Button size="sm" variant="outline" className="rounded-xl h-8 text-xs font-body" onClick={() => {
+                    setSelectedOrder(d);
+                    fetchOrderItems(d.id);
+                  }}>Detalhes</Button>
+                  {d.logistics_status === 'assigned' && (
+                    <Button onClick={(e) => { e.stopPropagation(); handleUpdateLogisticsStatus(d.id, 'accepted'); }} size="sm" className="rounded-xl h-8 text-xs font-body bg-emerald-500 hover:bg-emerald-600 text-white">Aceitar</Button>
+                  )}
+                  {d.logistics_status === 'accepted' && (
+                    <Button onClick={(e) => { e.stopPropagation(); handleUpdateLogisticsStatus(d.id, 'in_transit'); }} size="sm" className="rounded-xl h-8 text-xs font-body bg-blue-500 hover:bg-blue-600 text-white">Iniciar</Button>
+                  )}
+                  {d.logistics_status === 'in_transit' && (
+                    <Button onClick={(e) => { e.stopPropagation(); handleUpdateLogisticsStatus(d.id, 'delivered'); }} size="sm" className="rounded-xl h-8 text-xs font-body bg-emerald-500 hover:bg-emerald-600 text-white">Finalizar</Button>
+                  )}
                 </div>
               </div>
             </div>
           ))
         )}
       </div>
+
+      {selectedOrder && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-card border border-border rounded-2xl w-full max-w-md max-h-[90vh] flex flex-col shadow-xl overflow-hidden animate-in fade-in zoom-in-95">
+            <div className="p-4 border-b border-border flex items-center justify-between">
+              <h3 className="font-display font-bold text-lg">Detalhes da Entrega</h3>
+              <Button variant="ghost" size="icon" onClick={() => setSelectedOrder(null)} className="rounded-full h-8 w-8">
+                <X className="h-5 w-5" />
+              </Button>
+            </div>
+            <div className="p-4 overflow-y-auto space-y-5 custom-scrollbar">
+              {/* Trip Info */}
+              <div className="relative pl-6 space-y-4 before:absolute before:left-2 before:top-1 before:bottom-1 before:w-0.5 before:bg-muted before:content-['']">
+                <div className="relative">
+                  <div className="absolute -left-6 top-1 w-3 h-3 rounded-full bg-blue-500 border-2 border-white shadow-sm" />
+                  <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-0.5">Recolha (Loja)</p>
+                  <p className="text-sm font-bold text-foreground">{selectedOrder.stores?.name || 'Loja'}</p>
+                </div>
+                <div className="relative">
+                  <div className="absolute -left-6 top-1 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white shadow-sm" />
+                  <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-0.5">Entrega (Cliente)</p>
+                  <p className="text-sm font-bold text-foreground">{selectedOrder.profiles?.full_name || 'Cliente'}</p>
+                  <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
+                    <MapPin className="h-3 w-3 text-red-500" /> {selectedOrder.delivery_address}
+                  </p>
+                </div>
+              </div>
+
+              {/* Contact Actions */}
+              <div className="grid grid-cols-2 gap-2">
+                <Button variant="outline" className="h-10 rounded-xl gap-2 font-body text-xs" onClick={() => window.location.href = `tel:${selectedOrder.profiles?.phone}`}>
+                  <Phone className="h-3.5 w-3.5 text-emerald-600" /> Ligar Cliente
+                </Button>
+                <Button variant="outline" className="h-10 rounded-xl gap-2 font-body text-xs" disabled={!selectedOrder.stores?.phone}>
+                  <Store className="h-3.5 w-3.5 text-blue-600" /> Ligar Loja
+                </Button>
+              </div>
+
+              {/* Order Items */}
+              <div className="space-y-3 pt-2">
+                <p className="text-xs font-bold text-foreground flex items-center gap-2">
+                  <Package className="h-4 w-4 text-emerald-600" /> Itens a Transportar
+                </p>
+                {loadingItems ? (
+                  <div className="flex justify-center py-4"><Loader2 className="animate-spin text-emerald-600 h-6 w-6" /></div>
+                ) : (
+                  <div className="space-y-2 max-h-40 overflow-y-auto pr-2 custom-scrollbar">
+                    {orderItems.map((item) => (
+                      <div key={item.id} className="flex items-center gap-3 p-2 bg-muted/30 border border-border/50 rounded-xl">
+                        <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center overflow-hidden shrink-0 border border-border/30">
+                          {item.product_image ? (
+                            <img src={item.product_image} alt={item.product_name} className="w-full h-full object-cover" />
+                          ) : (
+                            <Package className="h-4 w-4 text-muted-foreground" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[11px] font-bold text-foreground truncate">{item.product_name}</p>
+                          <p className="text-[10px] text-muted-foreground">{item.quantity}x unidades</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Delivery Details */}
+              <div className="p-3 bg-muted/20 border border-border rounded-xl space-y-3">
+                <div className="flex items-center justify-between text-xs font-body">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-muted-foreground">Urgência:</span>
+                  </div>
+                  <span className={`font-bold uppercase ${selectedOrder.delivery_type === 'immediate' ? 'text-red-500' : 'text-blue-500'}`}>
+                    {selectedOrder.delivery_type === 'immediate' ? 'Imediata' : 'Agendada'}
+                  </span>
+                </div>
+                {selectedOrder.delivery_type === 'scheduled' && (
+                  <div className="bg-blue-50 p-2 rounded-lg text-[10px] font-bold text-blue-700 flex items-center justify-center gap-2">
+                    <Timer className="h-3.5 w-3.5" /> {selectedOrder.scheduled_date} às {selectedOrder.scheduled_time}
+                  </div>
+                )}
+                {selectedOrder.delivery_notes && (
+                  <div className="bg-amber-50/50 p-2 rounded-lg border border-amber-100">
+                    <p className="text-[10px] text-amber-800 italic flex gap-1.5 items-start leading-relaxed">
+                      <StickyNote className="h-3 w-3 shrink-0 mt-0.5" /> "{selectedOrder.delivery_notes}"
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Status Actions */}
+              <div className="pt-2 flex flex-col gap-2">
+                {selectedOrder.logistics_status === 'assigned' ? (
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      className="flex-1 rounded-xl h-11 text-xs font-body border-red-200 text-red-600 hover:bg-red-50"
+                      onClick={() => {
+                        handleUpdateLogisticsStatus(selectedOrder.id, 'rejected');
+                        setSelectedOrder(null);
+                      }}
+                    >
+                      Recusar
+                    </Button>
+                    <Button
+                      className="flex-1 rounded-xl h-11 text-xs font-body bg-emerald-500 hover:bg-emerald-600 text-white shadow-md"
+                      onClick={() => {
+                        handleUpdateLogisticsStatus(selectedOrder.id, 'accepted');
+                        setSelectedOrder(null);
+                      }}
+                    >
+                      Aceitar Entrega
+                    </Button>
+                  </div>
+                ) : selectedOrder.logistics_status === 'accepted' ? (
+                  <Button
+                    className="w-full rounded-xl h-11 text-xs font-body bg-blue-500 hover:bg-blue-600 text-white shadow-md"
+                    onClick={() => {
+                      handleUpdateLogisticsStatus(selectedOrder.id, 'in_transit');
+                      setSelectedOrder(null);
+                    }}
+                  >
+                    Iniciar Percurso
+                  </Button>
+                ) : selectedOrder.logistics_status === 'in_transit' ? (
+                  <Button
+                    className="w-full rounded-xl h-11 text-xs font-body bg-emerald-500 hover:bg-emerald-600 text-white shadow-md"
+                    onClick={() => {
+                      handleUpdateLogisticsStatus(selectedOrder.id, 'delivered');
+                      setSelectedOrder(null);
+                    }}
+                  >
+                    Marcar como Entregue
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
