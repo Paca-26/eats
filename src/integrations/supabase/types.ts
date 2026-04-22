@@ -81,6 +81,7 @@ export type Database = {
           id: string
           order_id: string
           product_id: string
+          product_image: string | null
           product_name: string
           quantity: number
           total_price: number
@@ -90,6 +91,7 @@ export type Database = {
           id?: string
           order_id: string
           product_id: string
+          product_image?: string | null
           product_name: string
           quantity?: number
           total_price: number
@@ -99,6 +101,7 @@ export type Database = {
           id?: string
           order_id?: string
           product_id?: string
+          product_image?: string | null
           product_name?: string
           quantity?: number
           total_price?: number
@@ -123,53 +126,68 @@ export type Database = {
       }
       orders: {
         Row: {
+          accept_substitution: boolean | null
           created_at: string
           customer_id: string
           delivery_address: string | null
           delivery_fee: number
           delivery_notes: string | null
+          delivery_type: string | null
           id: string
           logistics_id: string | null
           logistics_status: string | null
-          seen_by_admin: boolean
-          seen_by_vendor: boolean
+          scheduled_date: string | null
+          scheduled_time: string | null
+          seen_by_admin: boolean | null
+          seen_by_vendor: boolean | null
           status: string
           store_id: string
           subtotal: number
+          suggestion_pending: boolean | null
           total: number
           updated_at: string
         }
         Insert: {
+          accept_substitution?: boolean | null
           created_at?: string
           customer_id: string
           delivery_address?: string | null
           delivery_fee?: number
           delivery_notes?: string | null
+          delivery_type?: string | null
           id?: string
           logistics_id?: string | null
           logistics_status?: string | null
-          seen_by_admin?: boolean
-          seen_by_vendor?: boolean
+          scheduled_date?: string | null
+          scheduled_time?: string | null
+          seen_by_admin?: boolean | null
+          seen_by_vendor?: boolean | null
           status?: string
           store_id: string
           subtotal?: number
+          suggestion_pending?: boolean | null
           total?: number
           updated_at?: string
         }
         Update: {
+          accept_substitution?: boolean | null
           created_at?: string
           customer_id?: string
           delivery_address?: string | null
           delivery_fee?: number
           delivery_notes?: string | null
+          delivery_type?: string | null
           id?: string
           logistics_id?: string | null
           logistics_status?: string | null
-          seen_by_admin?: boolean
-          seen_by_vendor?: boolean
+          scheduled_date?: string | null
+          scheduled_time?: string | null
+          seen_by_admin?: boolean | null
+          seen_by_vendor?: boolean | null
           status?: string
           store_id?: string
           subtotal?: number
+          suggestion_pending?: boolean | null
           total?: number
           updated_at?: string
         }
