@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import DashboardShell from "@/components/DashboardShell";
 import BottomNav, { BottomNavItem } from "@/components/BottomNav";
 import StatCard from "@/components/StatCard";
 import AnimatedTabContent from "@/components/AnimatedTabContent";
-import { ShoppingBag, Heart, MapPin, Clock, Home, Search, User, Bell, UtensilsCrossed, ShoppingCart, Beef, Fish, Star, ChevronRight, Package, CreditCard, HelpCircle, LogOut, Edit, Camera, Phone, Mail, Zap, Timer, Store, ArrowLeft } from "lucide-react";
+import { ShoppingBag, Heart, MapPin, Clock, Home, Search, User, Bell, UtensilsCrossed, ShoppingCart, Beef, Fish, Star, ChevronRight, Package, CreditCard, HelpCircle, LogOut, Edit, Camera, Phone, Mail, Zap, Timer, Store, ArrowLeft, StickyNote, ShieldCheck, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
@@ -24,9 +24,16 @@ const navItems: BottomNavItem[] = [
 ];
 
 const ClientDashboard = () => {
+  const location = useLocation();
   const [activeTab, setActiveTab] = useState("home");
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (location.state && location.state.activeTab) {
+      setActiveTab(location.state.activeTab);
+    }
+  }, [location.state]);
 
   const fetchProfile = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -449,12 +456,23 @@ const ClientOrders = ({ onNewOrder }: { onNewOrder: () => void }) => {
             ) : (
               <div className="bg-muted/30 rounded-2xl p-2 divide-y divide-border/50">
                 {orderItems.map((item) => (
-                  <div key={item.id} className="p-3 flex items-center justify-between font-body">
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs font-bold text-accent bg-accent/10 px-2 py-0.5 rounded-lg">{item.quantity}x</span>
-                      <span className="text-sm font-medium text-foreground">{item.product_name}</span>
+                  <div key={item.id} className="p-3 flex items-center font-body gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-background border border-border overflow-hidden shrink-0">
+                      {item.product_image ? (
+                        <img src={item.product_image} alt={item.product_name} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-muted-foreground bg-muted/50">
+                          <Package className="h-5 w-5" />
+                        </div>
+                      )}
                     </div>
-                    <span className="text-sm font-bold text-foreground">{item.total_price.toLocaleString()} Kz</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-bold text-foreground truncate">{item.product_name}</p>
+                      <p className="text-xs text-muted-foreground font-body">{item.quantity}x unidades · {item.unit_price.toLocaleString()} Kz</p>
+                    </div>
+                    <div className="text-sm font-black text-foreground">
+                      {(item.total_price || (item.unit_price * item.quantity)).toLocaleString()} Kz
+                    </div>
                   </div>
                 ))}
               </div>
@@ -476,11 +494,63 @@ const ClientOrders = ({ onNewOrder }: { onNewOrder: () => void }) => {
             </div>
           </div>
 
-          <div className="mt-8 pt-6 border-t border-border">
-            <h4 className="font-display font-bold text-foreground text-sm mb-3">Endereço de Entrega</h4>
-            <div className="flex items-start gap-2 text-sm font-body text-muted-foreground">
-              <MapPin className="h-4 w-4 shrink-0 text-blue-500 mt-0.5" />
-              <p>{selectedOrder.delivery_address || "Endereço não especificado"}</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8 pt-6 border-t border-border">
+            <div className="space-y-4">
+              <h4 className="font-display font-bold text-foreground text-sm flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-blue-500" /> Detalhes da Entrega
+              </h4>
+              <div className="bg-muted/20 p-4 rounded-2xl border border-border/50 space-y-3">
+                <div className="space-y-1">
+                  <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest leading-none">Endereço</p>
+                  <p className="text-sm font-body text-foreground leading-relaxed">{selectedOrder.delivery_address || "Endereço não especificado"}</p>
+                </div>
+                
+                {selectedOrder.delivery_notes && (
+                  <div className="space-y-1">
+                    <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest leading-none">Observações</p>
+                    <p className="text-sm font-body text-card-foreground italic bg-background/50 p-2 rounded-lg border border-border/30">"{selectedOrder.delivery_notes}"</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <h4 className="font-display font-bold text-foreground text-sm flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-emerald-500" /> Preferências e Agendamento
+              </h4>
+              <div className="bg-muted/20 p-4 rounded-2xl border border-border/50 space-y-3 font-body">
+                <div className="flex items-center justify-between p-2 bg-background/50 rounded-xl border border-border/30">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600"><CheckCircle2 className="h-3.5 w-3.5" /></div>
+                    <span className="text-xs font-medium text-muted-foreground">Substituição</span>
+                  </div>
+                  <span className={`text-xs font-bold ${selectedOrder.accept_substitution ? "text-emerald-600" : "text-amber-600"}`}>
+                    {selectedOrder.accept_substitution ? "Aceita" : "Não Aceita"}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between p-2 bg-background/50 rounded-xl border border-border/30">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-lg bg-blue-500/10 text-blue-600"><Clock className="h-3.5 w-3.5" /></div>
+                    <span className="text-xs font-medium text-muted-foreground">Tipo</span>
+                  </div>
+                  <span className="text-xs font-bold text-blue-600 uppercase">
+                    {selectedOrder.delivery_type === "scheduled" ? "Agendada" : "Imediata"}
+                  </span>
+                </div>
+
+                {selectedOrder.delivery_type === "scheduled" && (
+                  <div className="flex items-center justify-between p-2 bg-blue-500/5 rounded-xl border border-blue-500/10">
+                    <div className="flex items-center gap-2">
+                      <div className="p-1.5 rounded-lg bg-blue-500/10 text-blue-600"><Timer className="h-3.5 w-3.5" /></div>
+                      <span className="text-xs font-medium text-muted-foreground">Data/Hora</span>
+                    </div>
+                    <span className="text-xs font-bold text-blue-700">
+                      {selectedOrder.scheduled_date} às {selectedOrder.scheduled_time}
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 

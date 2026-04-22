@@ -95,6 +95,7 @@ const CartPage = () => {
           order_id: order.id,
           product_id: item.productId,
           product_name: item.name,
+          product_image: item.image, // Save the image at time of purchase
           quantity: item.quantity,
           unit_price: item.price,
           total_price: item.price * item.quantity
@@ -109,8 +110,8 @@ const CartPage = () => {
 
       toast.success("Pedido realizado com sucesso!");
       clearCart();
-      // Redirect to Client Dashboard - Orders tab
-      navigate("/cliente");
+      // Redirect to Client Dashboard - Orders tab explicitly using state
+      navigate("/cliente", { state: { activeTab: "orders" } });
     } catch (error) {
       console.error("Erro ao realizar pedido:", error);
       toast.error("Erro ao processar o seu pedido. Tente novamente.");
