@@ -29,6 +29,7 @@ const navItems: BottomNavItem[] = [
   { label: "Lojas", icon: Store, id: "stores" },
   { label: "Encomendas", icon: Package, id: "orders" },
   { label: "Utilizadores", icon: Users, id: "users" },
+  { label: "Definições", icon: Settings, id: "settings" },
 ];
 
 const AdminDashboard = () => {
@@ -101,6 +102,7 @@ const AdminDashboard = () => {
       case "stores": return <AdminStores />;
       case "orders": return <AdminOrders onOrderTotalUpdate={(count: number) => setNewOrdersCount(count)} />;
       case "users": return <AdminUsers />;
+      case "settings": return <AdminSettings />;
       default: return <AdminHome />;
     }
   };
