@@ -25,10 +25,10 @@ import heroAdmin from "@/assets/hero-admin.jpg";
 
 const navItems: BottomNavItem[] = [
   { label: "Início", icon: BarChart3, id: "home" },
+  { label: "Alertas", icon: Bell, id: "alerts" },
   { label: "Lojas", icon: Store, id: "stores" },
   { label: "Encomendas", icon: Package, id: "orders" },
   { label: "Utilizadores", icon: Users, id: "users" },
-  { label: "Definições", icon: Settings, id: "settings" },
 ];
 
 const AdminDashboard = () => {
@@ -97,10 +97,10 @@ const AdminDashboard = () => {
   const renderContent = () => {
     switch (activeTab) {
       case "home": return <AdminHome />;
+      case "alerts": return <AdminAlerts />;
       case "stores": return <AdminStores />;
       case "orders": return <AdminOrders onOrderTotalUpdate={(count: number) => setNewOrdersCount(count)} />;
       case "users": return <AdminUsers />;
-      case "settings": return <AdminSettings />;
       default: return <AdminHome />;
     }
   };
@@ -1144,6 +1144,92 @@ const AdminLogoutButton = () => {
     <Button variant="outline" onClick={handleLogout} className="w-full rounded-xl h-12 gap-2 font-body text-destructive border-destructive/20 hover:bg-destructive/10">
       <LogOut className="h-4 w-4" /> Terminar Sessão
     </Button>
+  );
+};
+
+const AdminAlerts = () => {
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchNotifications = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("notifications")
+        .select(`
+          *,
+          profiles:user_id (full_name)
+        `)
+        .order("created_at", { ascending: false })
+        .limit(20);
+      
+      if (error) throw error;
+      setNotifications(data || []);
+    } catch (err) {
+      console.error("Error fetching notifications:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+
+    const subscription = supabase
+      .channel('admin-notifications')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, 
+        () => fetchNotifications()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(subscription);
+    };
+  }, []);
+
+  const getNotificationIcon = (type: string) => {
+    switch (type) {
+      case 'substitution': return { icon: Zap, color: "bg-amber-100 text-amber-600" };
+      case 'order_update': return { icon: Package, color: "bg-emerald-100 text-emerald-600" };
+      default: return { icon: Bell, color: "bg-blue-100 text-blue-600" };
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="font-display text-2xl font-bold text-foreground">Alertas do Sistema</h2>
+      </div>
+
+      <div className="space-y-3">
+        {loading ? (
+          <div className="flex justify-center py-10"><Loader2 className="animate-spin text-amber-600 h-8 w-8" /></div>
+        ) : notifications.length > 0 ? (
+          notifications.map((n) => {
+            const { icon: Icon, color } = getNotificationIcon(n.type);
+            return (
+              <div key={n.id} className="bg-card border border-border rounded-2xl p-4 flex items-start gap-4 hover:shadow-md transition-all">
+                <div className={`p-2.5 rounded-xl ${color} shrink-0`}><Icon className="h-5 w-5" /></div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-display font-bold text-foreground text-sm">{n.title}</span>
+                    <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full font-body">Admin Feed</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground font-body leading-relaxed">{n.message}</p>
+                  <p className="text-[10px] text-muted-foreground font-body mt-2 flex items-center gap-1">
+                    <Clock className="h-3 w-3" /> {new Date(n.created_at).toLocaleString()}
+                  </p>
+                </div>
+              </div>
+            );
+          })
+        ) : (
+          <div className="text-center py-16 bg-muted/20 rounded-[2rem] border-2 border-dashed border-border/50">
+            <Bell className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
+            <p className="text-muted-foreground font-body">Nenhum alerta recente.</p>
+          </div>
+        )}
+      </div>
+    </div>
   );
 };
 

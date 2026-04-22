@@ -26,6 +26,7 @@ import {
 import { AlertCircle } from "lucide-react";
 import { useDisplayUser } from "@/hooks/useDisplayUser";
 import { supabase } from "@/integrations/supabase/client";
+import { sendNotification, notifyAdmins } from "@/lib/notifications";
 import heroVendor from "@/assets/hero-vendor.jpg";
 
 const initialNavItems: BottomNavItem[] = [
@@ -541,6 +542,9 @@ const VendorOrders = ({ storeId, onUpdate }: { storeId: string, onUpdate: () => 
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
   const [orderItems, setOrderItems] = useState<any[]>([]);
   const [loadingItems, setLoadingItems] = useState(false);
+  const [isSuggestionModalOpen, setIsSuggestionModalOpen] = useState(false);
+  const [suggestionNote, setSuggestionNote] = useState("");
+  const [isSubmittingSuggestion, setIsSubmittingSuggestion] = useState(false);
 
   const fetchOrders = async () => {
     setLoading(true);
@@ -593,8 +597,72 @@ const VendorOrders = ({ storeId, onUpdate }: { storeId: string, onUpdate: () => 
       toast.error("Erro ao atualizar pedido");
     } else {
       toast.success("Pedido atualizado");
+      
+      // Notify Client and Admin on Approval Cases
+      if (newStatus === 'awaiting_payment') {
+        const order = orders.find(o => o.id === orderId);
+        if (order) {
+          // Notify Client
+          await sendNotification({
+            userId: order.customer_id,
+            title: "Pedido Validado!",
+            message: `O seu pedido #${orderId.slice(0, 4)} foi validado. Aguardando pagamento.`,
+            type: "order_update",
+            orderId: order.id
+          });
+          // Notify Admin
+          await notifyAdmins({
+            title: "Pedido Validado pela Loja",
+            message: `A loja validou o pedido #${orderId.slice(0, 4)}. Status: Aguardando Pagamento.`,
+            type: "order_update",
+            orderId: order.id
+          });
+        }
+      }
+
       fetchOrders();
       onUpdate();
+    }
+  };
+
+  const handlePostSuggestion = async (orderId: string) => {
+    if (!suggestionNote.trim()) {
+      toast.error("Escreva uma sugestão para o cliente");
+      return;
+    }
+
+    setIsSubmittingSuggestion(true);
+    try {
+      const { error } = await supabase
+        .from("orders")
+        .update({ 
+          suggestion_pending: true,
+          substitution_notes: suggestionNote 
+        })
+        .eq("id", orderId);
+
+      if (error) throw error;
+
+      const order = orders.find(o => o.id === orderId);
+      if (order) {
+        await sendNotification({
+          userId: order.customer_id,
+          title: "Sugestão de Substituição",
+          message: `A loja sugeriu uma alternativa para o seu pedido #${orderId.slice(0, 4)}.`,
+          type: "substitution",
+          orderId: order.id
+        });
+      }
+
+      toast.success("Sugestão enviada ao cliente");
+      setIsSuggestionModalOpen(false);
+      setSuggestionNote("");
+      setSelectedOrder(null);
+      fetchOrders();
+    } catch (err: any) {
+      toast.error(err.message);
+    } finally {
+      setIsSubmittingSuggestion(false);
     }
   };
 
@@ -791,29 +859,109 @@ const VendorOrders = ({ storeId, onUpdate }: { storeId: string, onUpdate: () => 
 
               {/* Status Actions */}
               {selectedOrder.status === "pending" && (
-                <div className="pt-2 flex gap-2">
-                  <Button
-                    variant="outline"
-                    className="flex-1 rounded-xl text-xs font-body border-red-200 text-red-600 hover:bg-red-50"
-                    onClick={() => {
-                      handleUpdateStatus(selectedOrder.id, "cancelled");
-                      setSelectedOrder(null);
-                    }}
-                  >
-                    Rejeitar
-                  </Button>
-                  <Button
-                    className="flex-1 rounded-xl text-xs font-body bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md hover:shadow-lg transition-all"
-                    onClick={() => {
-                      handleUpdateStatus(selectedOrder.id, "awaiting_payment");
-                      setSelectedOrder(null);
-                    }}
-                  >
-                    Aprovar Pedido
-                  </Button>
+                <div className="pt-2 border-t border-border mt-2 space-y-3">
+                  {selectedOrder.suggestion_pending ? (
+                    <div className="bg-amber-50 p-3 rounded-xl border border-amber-100 text-center">
+                      <p className="text-xs font-bold text-amber-700">Sugestão Enviada</p>
+                      <p className="text-[10px] text-amber-600 italic mt-1">Aguardando resposta do cliente.</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          className="flex-1 rounded-xl text-xs font-body border-red-200 text-red-600 hover:bg-red-50"
+                          onClick={() => {
+                            handleUpdateStatus(selectedOrder.id, "cancelled");
+                            setSelectedOrder(null);
+                          }}
+                        >
+                          Rejeitar
+                        </Button>
+                        <Button
+                          className="flex-1 rounded-xl text-xs font-body bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md hover:shadow-lg transition-all"
+                          onClick={() => {
+                            handleUpdateStatus(selectedOrder.id, "awaiting_payment");
+                            setSelectedOrder(null);
+                          }}
+                        >
+                          Aprovar Todos
+                        </Button>
+                      </div>
+                      <div className="pt-2">
+                        <Button
+                          variant="ghost"
+                          className="w-full rounded-xl text-xs font-bold text-amber-600 hover:bg-amber-50 gap-2"
+                          onClick={() => setIsSuggestionModalOpen(true)}
+                        >
+                          {selectedOrder.accept_substitution ? (
+                            <>🛒 Sugerir Alternativa (Produto em falta)</>
+                          ) : (
+                            <>❌ Produto indisponível (Remover/Cancelar)</>
+                          )}
+                        </Button>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
             </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Suggestion Modal overlay */}
+      {isSuggestionModalOpen && selectedOrder && (
+        <div className="fixed inset-0 bg-background/60 backdrop-blur-md z-[110] flex items-center justify-center p-6">
+          <div className="bg-card border-border border shadow-2xl rounded-[2rem] w-full max-w-sm p-6 space-y-4 animate-in fade-in zoom-in-95">
+            <h4 className="font-display font-bold text-lg text-foreground">
+              {selectedOrder.accept_substitution ? "Sugerir Alternativa" : "Remover Produto"}
+            </h4>
+            <p className="text-xs text-muted-foreground font-body">
+              {selectedOrder.accept_substitution 
+                ? "O cliente aceita sugestões. Escreva o que vai substituir o item em falta."
+                : "O cliente NÃO aceita sugestões. Pode remover o item (o total será recalculado manualmente pelo admin) ou cancelar o pedido."
+              }
+            </p>
+            
+            {selectedOrder.accept_substitution ? (
+              <textarea
+                value={suggestionNote}
+                onChange={(e) => setSuggestionNote(e.target.value)}
+                placeholder="Ex: Não temos a Coca-Cola de 1L, podemos enviar 2 latas de 330ml?"
+                className="w-full min-h-[100px] p-4 rounded-2xl bg-muted/30 border border-border text-sm font-body focus:ring-amber-500 focus:border-amber-500 outline-none transition-all"
+              />
+            ) : (
+              <div className="p-4 bg-red-50 rounded-2xl border border-red-100">
+                <p className="text-[10px] text-red-600 font-bold uppercase tracking-wider mb-1">Apenas remoção/cancelamento</p>
+                <p className="text-xs text-red-800">Este cliente prefere o cancelamento do item se não estiver disponível.</p>
+              </div>
+            )}
+
+            <div className="flex gap-2 pt-2">
+              <Button variant="ghost" className="flex-1 rounded-xl" onClick={() => setIsSuggestionModalOpen(false)}>Voltar</Button>
+              {selectedOrder.accept_substitution ? (
+                <Button 
+                  className="flex-1 rounded-xl bg-amber-500 hover:bg-amber-600 text-white" 
+                  onClick={() => handlePostSuggestion(selectedOrder.id)}
+                  disabled={isSubmittingSuggestion}
+                >
+                  {isSubmittingSuggestion ? "Enviando..." : "Enviar Sugestão"}
+                </Button>
+              ) : (
+                <Button 
+                  variant="destructive"
+                  className="flex-1 rounded-xl" 
+                  onClick={() => {
+                    handleUpdateStatus(selectedOrder.id, "cancelled");
+                    setIsSuggestionModalOpen(false);
+                    setSelectedOrder(null);
+                  }}
+                >
+                  Cancelar Pedido
+                </Button>
+              )}
             </div>
           </div>
         </div>

@@ -13,6 +13,7 @@ import { useDemoAuth } from "@/contexts/DemoAuthContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDisplayUser } from "@/hooks/useDisplayUser";
 import { supabase } from "@/integrations/supabase/client";
+import { notifyAdmins } from "@/lib/notifications";
 import heroClient from "@/assets/hero-client.jpg";
 
 const navItems: BottomNavItem[] = [
@@ -368,6 +369,58 @@ const ClientOrders = ({ onNewOrder }: { onNewOrder: () => void }) => {
     }
   };
 
+  const handleApproveSubstitution = async (order: any) => {
+    try {
+      const { error } = await supabase
+        .from("orders")
+        .update({ 
+          suggestion_pending: false,
+          status: "awaiting_payment" 
+        })
+        .eq("id", order.id);
+
+      if (error) throw error;
+
+      toast.success("Sugestão aprovada! Prossiga para o pagamento.");
+      
+      await notifyAdmins({
+        title: "Cliente aceitou substituição",
+        message: `O cliente aceitou a sugestão para o pedido #${order.id.slice(0, 4)}. Status: Aguardando Pagamento.`,
+        type: "order_update",
+        orderId: order.id
+      });
+
+      if (selectedOrder?.id === order.id) {
+        setSelectedOrder({ ...selectedOrder, suggestion_pending: false, status: "awaiting_payment" });
+      }
+      setOrders(orders.map(o => o.id === order.id ? { ...o, suggestion_pending: false, status: "awaiting_payment" } : o));
+    } catch (err: any) {
+      toast.error(err.message);
+    }
+  };
+
+  const handleRejectSubstitution = async (order: any) => {
+    try {
+      const { error } = await supabase
+        .from("orders")
+        .update({ 
+          suggestion_pending: false,
+          status: "cancelled" 
+        })
+        .eq("id", order.id);
+
+      if (error) throw error;
+
+      toast.success("Pedido cancelado conforme solicitado.");
+      if (selectedOrder?.id === order.id) {
+        setSelectedOrder({ ...selectedOrder, suggestion_pending: false, status: "cancelled" });
+      }
+      setOrders(orders.map(o => o.id === order.id ? { ...o, suggestion_pending: false, status: "cancelled" } : o));
+    } catch (err: any) {
+      toast.error(err.message);
+    }
+  };
+
   const handleOpenDetails = (order: any) => {
     setSelectedOrder(order);
     fetchOrderItems(order.id);
@@ -633,6 +686,12 @@ const ClientOrders = ({ onNewOrder }: { onNewOrder: () => void }) => {
               onClick={() => handleOpenDetails(order)}
               className="bg-card border border-border rounded-[2rem] p-5 hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer group relative overflow-hidden"
             >
+              {order.suggestion_pending && (
+                <div className="absolute top-0 right-0 bg-amber-500 text-white text-[9px] font-black uppercase px-4 py-1.5 rounded-bl-2xl shadow-sm animate-pulse z-20">
+                  Acção Necessária
+                </div>
+              )}
+
               <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:rotate-12 transition-transform duration-500">
                 <Package className="h-16 w-16" />
               </div>
@@ -665,6 +724,32 @@ const ClientOrders = ({ onNewOrder }: { onNewOrder: () => void }) => {
                   Ver detalhes <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
+
+              {order.suggestion_pending && (
+                <div className="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-2xl space-y-2 relative z-20" onClick={(e) => e.stopPropagation()}>
+                  <p className="text-[10px] font-black text-amber-700 uppercase flex items-center gap-2">
+                    <Zap className="h-3 w-3" /> Sugestão da Loja
+                  </p>
+                  <p className="text-xs text-amber-800 font-medium italic">"{order.substitution_notes}"</p>
+                  <div className="flex gap-2 pt-1">
+                    <Button 
+                      size="sm" 
+                      className="h-8 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-[10px] flex-1"
+                      onClick={() => handleApproveSubstitution(order)}
+                    >
+                      Aceitar Sugestão
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="h-8 rounded-lg border-amber-200 text-amber-700 text-[10px] flex-1"
+                      onClick={() => handleRejectSubstitution(order)}
+                    >
+                      Cancelar Pedido
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           ))
         ) : (
@@ -682,37 +767,119 @@ const ClientOrders = ({ onNewOrder }: { onNewOrder: () => void }) => {
 };
 
 const ClientAlerts = () => {
-  const notifications = [
-    { title: "Encomenda a caminho!", desc: "O seu pedido #1044 saiu para entrega.", time: "há 5 min", icon: Package, color: "bg-blue-100 text-blue-600", unread: true },
-    { title: "Pedido confirmado", desc: "MMM' All4You aceitou o seu pedido #1045.", time: "há 20 min", icon: ShoppingBag, color: "bg-emerald-100 text-emerald-600", unread: true },
-    { title: "Promoção!", desc: "Super Luanda: 20% desconto em frescos hoje.", time: "há 1h", icon: Star, color: "bg-amber-100 text-amber-600", unread: false },
-    { title: "Entrega concluída", desc: "Pedido #1040 entregue com sucesso.", time: "há 3h", icon: Package, color: "bg-emerald-100 text-emerald-600", unread: false },
-    { title: "Novidade", desc: "Grelha de Ouro adicionou novos pratos!", time: "Ontem", icon: UtensilsCrossed, color: "bg-orange-100 text-orange-600", unread: false },
-  ];
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchNotifications = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from("notifications")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(10);
+      
+      if (error) throw error;
+      setNotifications(data || []);
+    } catch (err) {
+      console.error("Error fetching notifications:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+
+    // Real-time subscription
+    const channel = supabase
+      .channel('schema-db-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications'
+        },
+        (payload) => {
+          setNotifications(prev => [payload.new, ...prev].slice(0, 10));
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  const getNotificationIcon = (type: string) => {
+    switch (type) {
+      case 'substitution': return { icon: Zap, color: "bg-amber-100 text-amber-600" };
+      case 'order_update': return { icon: ShoppingBag, color: "bg-emerald-100 text-emerald-600" };
+      default: return { icon: Bell, color: "bg-blue-100 text-blue-600" };
+    }
+  };
+
+  const getTimeAgo = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffInMins = Math.floor((now.getTime() - date.getTime()) / 60000);
+    
+    if (diffInMins < 1) return "agora";
+    if (diffInMins < 60) return `há ${diffInMins} min`;
+    const diffInHours = Math.floor(diffInMins / 60);
+    if (diffInHours < 24) return `há ${diffInHours} h`;
+    return date.toLocaleDateString();
+  };
 
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <h2 className="font-display text-2xl font-bold text-foreground">Notificações</h2>
-        <span className="bg-accent text-accent-foreground text-[10px] font-body font-bold px-2 py-0.5 rounded-full">2 novas</span>
+        {notifications.filter(n => !n.is_read).length > 0 && (
+          <span className="bg-accent text-accent-foreground text-[10px] font-body font-bold px-2 py-0.5 rounded-full">
+            {notifications.filter(n => !n.is_read).length} novas
+          </span>
+        )}
       </div>
       <div className="space-y-2">
-        {notifications.map((n, i) => {
-          const Icon = n.icon;
-          return (
-            <div key={i} className={`bg-card border rounded-2xl p-4 flex items-start gap-3 transition-all cursor-pointer hover:shadow-md ${n.unread ? "border-accent/30 bg-accent/5" : "border-border"}`}>
-              <div className={`p-2 rounded-xl ${n.color} shrink-0`}><Icon className="h-4 w-4" /></div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="font-display font-bold text-foreground text-sm">{n.title}</span>
-                  {n.unread && <div className="h-2 w-2 rounded-full bg-accent" />}
+        {loading ? (
+          <div className="flex justify-center py-8"><Loader2 className="animate-spin text-accent" /></div>
+        ) : notifications.length > 0 ? (
+          notifications.map((n) => {
+            const { icon: Icon, color } = getNotificationIcon(n.type);
+            return (
+              <div 
+                key={n.id} 
+                className={`bg-card border rounded-2xl p-4 flex items-start gap-3 transition-all cursor-pointer hover:shadow-md ${!n.is_read ? "border-accent/30 bg-accent/5 shadow-sm" : "border-border"}`}
+                onClick={async () => {
+                  if (!n.is_read) {
+                    await supabase.from("notifications").update({ is_read: true }).eq("id", n.id);
+                    setNotifications(notifications.map(item => item.id === n.id ? { ...item, is_read: true } : item));
+                  }
+                }}
+              >
+                <div className={`p-2 rounded-xl ${color} shrink-0`}><Icon className="h-4 w-4" /></div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-display font-bold text-foreground text-sm">{n.title}</span>
+                    {!n.is_read && <div className="h-2 w-2 rounded-full bg-accent" />}
+                  </div>
+                  <p className="text-xs text-muted-foreground font-body mt-0.5">{n.message}</p>
                 </div>
-                <p className="text-xs text-muted-foreground font-body mt-0.5">{n.desc}</p>
+                <span className="text-[10px] text-muted-foreground font-body whitespace-nowrap">{getTimeAgo(n.created_at)}</span>
               </div>
-              <span className="text-[10px] text-muted-foreground font-body whitespace-nowrap">{n.time}</span>
-            </div>
-          );
-        })}
+            );
+          })
+        ) : (
+          <div className="text-center py-10 bg-muted/10 rounded-2xl border-2 border-dashed border-border/50">
+            <Bell className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground font-body">Sem notificações no momento.</p>
+          </div>
+        )}
       </div>
     </div>
   );
