@@ -11,6 +11,16 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useDisplayUser } from "@/hooks/useDisplayUser";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import heroAdmin from "@/assets/hero-admin.jpg";
 
 const navItems: BottomNavItem[] = [
@@ -211,6 +221,8 @@ const AdminStores = () => {
   const [stores, setStores] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedStoreForProducts, setSelectedStoreForProducts] = useState<{ id: string, name: string } | null>(null);
+  const [storeToDelete, setStoreToDelete] = useState<{ id: string, name: string } | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const { toast } = useToast();
 
   const fetchStores = async () => {
@@ -270,13 +282,16 @@ const AdminStores = () => {
     }
   };
 
-  const handleDeleteStore = async (id: string, name: string) => {
-    if (!confirm(`Tem certeza que deseja apagar a loja ${name}? Isso apagará todos os produtos associados.`)) return;
+  const handleDeleteStore = async () => {
+    if (!storeToDelete) return;
+    
     try {
-      const { error } = await supabase.from('stores').delete().eq('id', id);
+      const { error } = await supabase.from('stores').delete().eq('id', storeToDelete.id);
       if (error) throw error;
       toast({ title: "Sucesso", description: "Loja apagada com sucesso." });
       fetchStores();
+      setStoreToDelete(null);
+      setIsDeleteDialogOpen(false);
     } catch (err: any) {
       console.error("Erro ao apagar loja:", err);
       toast({ title: "Erro", description: err.message, variant: "destructive" });
@@ -324,7 +339,10 @@ const AdminStores = () => {
                   <span className={`text-[10px] font-body font-semibold px-2 py-0.5 rounded-full ${s.is_active ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
                     {s.is_active ? "Ativa" : "Pendente/Suspensa"}
                   </span>
-                  <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => handleDeleteStore(s.id, s.name)}>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => {
+                    setStoreToDelete({ id: s.id, name: s.name });
+                    setIsDeleteDialogOpen(true);
+                  }}>
                     <Trash2 className="h-3 w-3" />
                   </Button>
                 </div>
@@ -362,6 +380,32 @@ const AdminStores = () => {
           onClose={() => setSelectedStoreForProducts(null)}
         />
       )}
+
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent className="rounded-2xl border-border">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-display font-bold text-xl text-foreground flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-destructive" /> Confirmar Exclusão
+            </AlertDialogTitle>
+            <AlertDialogDescription className="font-body text-muted-foreground text-sm">
+              Tem certeza que deseja apagar a loja <span className="font-bold text-foreground">"{storeToDelete?.name}"</span>? 
+              <br /><br />
+              <span className="bg-destructive/10 text-destructive px-3 py-2 rounded-lg block text-xs border border-destructive/20 italic">
+                Esta ação apagará todos os produtos associados e não pode ser desfeita.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:gap-0">
+            <AlertDialogCancel className="rounded-xl font-body border-border hover:bg-muted">Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDeleteStore}
+              className="rounded-xl font-body bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Confirmar e Apagar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
@@ -765,6 +809,8 @@ const AdminUsers = () => {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [userToDelete, setUserToDelete] = useState<{ id: string, name: string } | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const { toast } = useToast();
 
   const fetchUsers = async () => {
@@ -785,14 +831,16 @@ const AdminUsers = () => {
     fetchUsers();
   }, []);
 
-  const handleDelete = async (userId: string, name: string) => {
-    if (!confirm(`Tem certeza que deseja apagar o utilizador ${name}? Esta ação não pode ser desfeita.`)) return;
+  const handleDelete = async () => {
+    if (!userToDelete) return;
 
     try {
-      const { error } = await supabase.rpc("delete_user_admin", { target_user_id: userId });
+      const { error } = await supabase.rpc("delete_user_admin", { target_user_id: userToDelete.id });
       if (error) throw error;
       toast({ title: "Sucesso", description: "Utilizador apagado com sucesso." });
       fetchUsers();
+      setUserToDelete(null);
+      setIsDeleteDialogOpen(false);
     } catch (err: any) {
       console.error("Erro ao apagar:", err);
       toast({ title: "Erro na exclusão", description: err.message, variant: "destructive" });
@@ -863,7 +911,10 @@ const AdminUsers = () => {
                   <span className="text-[10px] text-muted-foreground font-body">{u.total_orders || 0} compras</span>
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => handleDelete(u.id, u.full_name || u.email)}>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => {
+                    setUserToDelete({ id: u.id, name: u.full_name || u.email });
+                    setIsDeleteDialogOpen(true);
+                  }}>
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
@@ -872,6 +923,32 @@ const AdminUsers = () => {
           ))}
         </div>
       )}
+
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent className="rounded-2xl border-border">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="font-display font-bold text-xl text-foreground flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-destructive" /> Confirmar Exclusão
+            </AlertDialogTitle>
+            <AlertDialogDescription className="font-body text-muted-foreground text-sm">
+              Tem certeza que deseja apagar o utilizador <span className="font-bold text-foreground">"{userToDelete?.name}"</span>? 
+              <br /><br />
+              <span className="bg-destructive/10 text-destructive px-3 py-2 rounded-lg block text-xs border border-destructive/20 italic">
+                Esta ação não pode ser desfeita e removerá permanentemente o acesso deste utilizador.
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:gap-0">
+            <AlertDialogCancel className="rounded-xl font-body border-border hover:bg-muted">Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDelete}
+              className="rounded-xl font-body bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Confirmar e Apagar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
