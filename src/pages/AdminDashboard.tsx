@@ -4,7 +4,7 @@ import DashboardShell from "@/components/DashboardShell";
 import BottomNav, { BottomNavItem } from "@/components/BottomNav";
 import StatCard from "@/components/StatCard";
 import AnimatedTabContent from "@/components/AnimatedTabContent";
-import { Users, Store, Package, MapPin, ShieldCheck, TrendingUp, Settings, BarChart3, Bell, Search, ChevronRight, Star, Eye, CheckCircle2, XCircle, Clock, AlertCircle, Edit, Shield, Mail, Phone, Save, Trash2, LogOut, Loader2, Truck, Timer, StickyNote } from "lucide-react";
+import { Users, Store, Package, MapPin, ShieldCheck, TrendingUp, Settings, BarChart3, Bell, Search, ChevronRight, Star, Eye, CheckCircle2, XCircle, Clock, AlertCircle, Edit, Shield, Mail, Phone, Save, Trash2, LogOut, Loader2, Truck, Timer, StickyNote, Zap, MessageCircle, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useDemoAuth } from "@/contexts/DemoAuthContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -1155,12 +1155,9 @@ const AdminAlerts = () => {
 
   const fetchNotifications = async () => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("notifications")
-        .select(`
-          *,
-          profiles:user_id (full_name)
-        `)
+        .select(`*, profiles:user_id (full_name)`)
         .order("created_at", { ascending: false })
         .limit(20);
       

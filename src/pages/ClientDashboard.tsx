@@ -775,7 +775,7 @@ const ClientAlerts = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("notifications")
         .select("*")
         .eq("user_id", user.id)
@@ -857,7 +857,7 @@ const ClientAlerts = () => {
                 className={`bg-card border rounded-2xl p-4 flex items-start gap-3 transition-all cursor-pointer hover:shadow-md ${!n.is_read ? "border-accent/30 bg-accent/5 shadow-sm" : "border-border"}`}
                 onClick={async () => {
                   if (!n.is_read) {
-                    await supabase.from("notifications").update({ is_read: true }).eq("id", n.id);
+                    await (supabase as any).from("notifications").update({ is_read: true }).eq("id", n.id);
                     setNotifications(notifications.map(item => item.id === n.id ? { ...item, is_read: true } : item));
                   }
                 }}
