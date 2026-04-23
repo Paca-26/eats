@@ -341,7 +341,7 @@ const ClientOrders = ({ onNewOrder }: { onNewOrder: () => void }) => {
 
         const { data, error } = await supabase
           .from("orders")
-          .select("*, stores(name, logo_url)")
+          .select("*, stores(name, logo_url, owner_id)")
           .eq("customer_id", user.id)
           .order("created_at", { ascending: false });
 
