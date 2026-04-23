@@ -5,6 +5,8 @@ import BottomNav, { BottomNavItem } from "@/components/BottomNav";
 import StatCard from "@/components/StatCard";
 import AnimatedTabContent from "@/components/AnimatedTabContent";
 import { Users, Store, Package, MapPin, ShieldCheck, TrendingUp, Settings, BarChart3, Bell, Search, ChevronRight, Star, Eye, CheckCircle2, XCircle, Clock, AlertCircle, Edit, Shield, Mail, Phone, Save, Trash2, LogOut, Loader2, Truck, Timer, StickyNote, Zap, MessageCircle, Send } from "lucide-react";
+import OrderChat from "@/components/OrderChat";
+import AvailabilityBadge from "@/components/AvailabilityBadge";
 import { Button } from "@/components/ui/button";
 import { useDemoAuth } from "@/contexts/DemoAuthContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -522,6 +524,7 @@ const AdminOrders = ({ onOrderTotalUpdate, setNewOrdersCount }: { onOrderTotalUp
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
   const [orderItems, setOrderItems] = useState<any[]>([]);
   const [loadingItems, setLoadingItems] = useState(false);
+  const { user } = useAuth();
   const [couriers, setCouriers] = useState<any[]>([]);
   const [isAssigning, setIsAssigning] = useState(false);
   const ITEMS_PER_PAGE = 5;
