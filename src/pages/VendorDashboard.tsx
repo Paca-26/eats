@@ -4,7 +4,9 @@ import DashboardShell from "@/components/DashboardShell";
 import BottomNav, { BottomNavItem } from "@/components/BottomNav";
 import StatCard from "@/components/StatCard";
 import AnimatedTabContent from "@/components/AnimatedTabContent";
-import { Package, ShoppingCart, Star, TrendingUp, Plus, BarChart3, Settings, MessageSquare, Grid3X3, Store, Eye, Clock, Edit, Trash2, MapPin, Phone, Mail, Save, LogOut, ToggleLeft, ToggleRight, Loader2, UserPlus, Search, X, ShieldCheck, CheckCircle2, Truck, Timer, StickyNote, Users } from "lucide-react";
+import { Package, ShoppingCart, Star, TrendingUp, Plus, BarChart3, Settings, MessageSquare, Grid3X3, Store, Eye, Clock, Edit, Trash2, MapPin, Phone, Mail, Save, LogOut, ToggleLeft, ToggleRight, Loader2, UserPlus, Search, X, ShieldCheck, CheckCircle2, Truck, Timer, StickyNote, Users, MessageCircle, AlertTriangle, XCircle } from "lucide-react";
+import OrderChat from "@/components/OrderChat";
+import AvailabilityBadge from "@/components/AvailabilityBadge";
 import { Input } from "@/components/ui/input";
 import AddProductDialog, { type Product } from "@/components/vendor/AddProductDialog";
 import StoreSetupDialog from "@/components/vendor/StoreSetupDialog";
@@ -545,6 +547,67 @@ const VendorOrders = ({ storeId, onUpdate }: { storeId: string, onUpdate: () => 
   const [isSuggestionModalOpen, setIsSuggestionModalOpen] = useState(false);
   const [suggestionNote, setSuggestionNote] = useState("");
   const [isSubmittingSuggestion, setIsSubmittingSuggestion] = useState(false);
+  const [vendorNotes, setVendorNotes] = useState("");
+  const [savingAvailability, setSavingAvailability] = useState(false);
+  const { user } = useAuth();
+  const [storeName, setStoreName] = useState<string>("");
+
+  useEffect(() => {
+    if (selectedOrder) {
+      setVendorNotes(selectedOrder.vendor_notes || "");
+    }
+  }, [selectedOrder?.id]);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase.from("stores").select("name").eq("id", storeId).maybeSingle();
+      if (data?.name) setStoreName(data.name);
+    })();
+  }, [storeId]);
+
+  const handleSetAvailability = async (newStatus: "available" | "partial" | "unavailable") => {
+    if (!selectedOrder) return;
+    setSavingAvailability(true);
+    try {
+      const { error } = await (supabase as any)
+        .from("orders")
+        .update({
+          availability_status: newStatus,
+          vendor_notes: vendorNotes.trim() || null,
+          availability_updated_at: new Date().toISOString(),
+        })
+        .eq("id", selectedOrder.id);
+      if (error) throw error;
+
+      const labels: Record<string, string> = {
+        available: "Disponível",
+        partial: "Parcialmente disponível",
+        unavailable: "Indisponível",
+      };
+      const noteSuffix = vendorNotes.trim() ? ` Nota: ${vendorNotes.trim().slice(0, 80)}` : "";
+      await sendNotification({
+        userId: selectedOrder.customer_id,
+        title: `Disponibilidade actualizada`,
+        message: `O seu pedido #${selectedOrder.id.slice(0, 4)} foi marcado como "${labels[newStatus]}".${noteSuffix}`,
+        type: "availability_update",
+        orderId: selectedOrder.id,
+      });
+      await notifyAdmins({
+        title: `Disponibilidade da encomenda actualizada`,
+        message: `A loja marcou a encomenda #${selectedOrder.id.slice(0, 4)} como "${labels[newStatus]}".${noteSuffix}`,
+        type: "availability_update",
+        orderId: selectedOrder.id,
+      });
+
+      toast.success("Disponibilidade actualizada e cliente notificado.");
+      setSelectedOrder({ ...selectedOrder, availability_status: newStatus, vendor_notes: vendorNotes.trim() || null });
+      fetchOrders();
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao actualizar disponibilidade");
+    } finally {
+      setSavingAvailability(false);
+    }
+  };
 
   const fetchOrders = async () => {
     setLoading(true);
@@ -856,6 +919,71 @@ const VendorOrders = ({ storeId, onUpdate }: { storeId: string, onUpdate: () => 
                   )}
                 </div>
               </div>
+
+              {/* Disponibilidade do Pedido */}
+              <div className="p-3 bg-gradient-to-br from-indigo-50/40 to-purple-50/40 border border-indigo-100 rounded-xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] uppercase font-bold text-indigo-600 tracking-wider flex items-center gap-1">
+                    <ShieldCheck className="h-3 w-3" /> Disponibilidade
+                  </p>
+                  <AvailabilityBadge status={selectedOrder.availability_status} />
+                </div>
+                <textarea
+                  value={vendorNotes}
+                  onChange={(e) => setVendorNotes(e.target.value)}
+                  placeholder="Informações adicionais para o cliente (ex: stock parcial de tomate, demora 30min adicional, etc.)"
+                  className="w-full min-h-[64px] p-3 rounded-xl bg-background border border-border text-xs font-body focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                  maxLength={500}
+                />
+                <div className="grid grid-cols-3 gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="rounded-xl h-9 text-[11px] font-body border-emerald-200 text-emerald-700 hover:bg-emerald-50 gap-1"
+                    disabled={savingAvailability}
+                    onClick={() => handleSetAvailability("available")}
+                  >
+                    <CheckCircle2 className="h-3 w-3" /> Disponível
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="rounded-xl h-9 text-[11px] font-body border-amber-200 text-amber-700 hover:bg-amber-50 gap-1"
+                    disabled={savingAvailability}
+                    onClick={() => handleSetAvailability("partial")}
+                  >
+                    <AlertTriangle className="h-3 w-3" /> Parcial
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="rounded-xl h-9 text-[11px] font-body border-rose-200 text-rose-700 hover:bg-rose-50 gap-1"
+                    disabled={savingAvailability}
+                    onClick={() => handleSetAvailability("unavailable")}
+                  >
+                    <XCircle className="h-3 w-3" /> Indisponível
+                  </Button>
+                </div>
+                {selectedOrder.availability_updated_at && (
+                  <p className="text-[10px] text-muted-foreground">
+                    Última actualização: {new Date(selectedOrder.availability_updated_at).toLocaleString("pt-PT")}
+                  </p>
+                )}
+              </div>
+
+              {/* Chat com Cliente */}
+              {user?.id && (
+                <OrderChat
+                  orderId={selectedOrder.id}
+                  currentUserId={user.id}
+                  currentUserRole="store"
+                  customerId={selectedOrder.customer_id}
+                  storeName={storeName}
+                />
+              )}
 
               {/* Status Actions */}
               {selectedOrder.status === "pending" && (

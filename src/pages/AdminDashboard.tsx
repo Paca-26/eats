@@ -4,7 +4,9 @@ import DashboardShell from "@/components/DashboardShell";
 import BottomNav, { BottomNavItem } from "@/components/BottomNav";
 import StatCard from "@/components/StatCard";
 import AnimatedTabContent from "@/components/AnimatedTabContent";
-import { Users, Store, Package, MapPin, ShieldCheck, TrendingUp, Settings, BarChart3, Bell, Search, ChevronRight, Star, Eye, CheckCircle2, XCircle, Clock, AlertCircle, Edit, Shield, Mail, Phone, Save, Trash2, LogOut, Loader2, Truck, Timer, StickyNote } from "lucide-react";
+import { Users, Store, Package, MapPin, ShieldCheck, TrendingUp, Settings, BarChart3, Bell, Search, ChevronRight, Star, Eye, CheckCircle2, XCircle, Clock, AlertCircle, Edit, Shield, Mail, Phone, Save, Trash2, LogOut, Loader2, Truck, Timer, StickyNote, Zap, MessageCircle, Send } from "lucide-react";
+import OrderChat from "@/components/OrderChat";
+import AvailabilityBadge from "@/components/AvailabilityBadge";
 import { Button } from "@/components/ui/button";
 import { useDemoAuth } from "@/contexts/DemoAuthContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -100,7 +102,7 @@ const AdminDashboard = () => {
       case "home": return <AdminHome />;
       case "alerts": return <AdminAlerts />;
       case "stores": return <AdminStores />;
-      case "orders": return <AdminOrders onOrderTotalUpdate={(count: number) => setNewOrdersCount(count)} />;
+      case "orders": return <AdminOrders onOrderTotalUpdate={(count: number) => setNewOrdersCount(count)} setNewOrdersCount={setNewOrdersCount} />;
       case "users": return <AdminUsers />;
       case "settings": return <AdminSettings />;
       default: return <AdminHome />;
@@ -513,7 +515,7 @@ const AdminStoreProducts = ({ store, onClose }: { store: { id: string, name: str
   );
 };
 
-const AdminOrders = ({ onOrderTotalUpdate }: { onOrderTotalUpdate?: (count: number) => void }) => {
+const AdminOrders = ({ onOrderTotalUpdate, setNewOrdersCount }: { onOrderTotalUpdate?: (count: number) => void; setNewOrdersCount?: (updater: (prev: number) => number) => void; }) => {
   const [filter, setFilter] = useState("all");
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -522,6 +524,7 @@ const AdminOrders = ({ onOrderTotalUpdate }: { onOrderTotalUpdate?: (count: numb
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
   const [orderItems, setOrderItems] = useState<any[]>([]);
   const [loadingItems, setLoadingItems] = useState(false);
+  const { user } = useAuth();
   const [couriers, setCouriers] = useState<any[]>([]);
   const [isAssigning, setIsAssigning] = useState(false);
   const ITEMS_PER_PAGE = 5;
@@ -565,7 +568,7 @@ const AdminOrders = ({ onOrderTotalUpdate }: { onOrderTotalUpdate?: (count: numb
         .from('orders')
         .select(`
           *,
-          stores(name),
+          stores(name, owner_id),
           profiles:customer_id(full_name, phone)
         `, { count: 'exact' });
 
@@ -703,6 +706,9 @@ const AdminOrders = ({ onOrderTotalUpdate }: { onOrderTotalUpdate?: (count: numb
                       Transportador: <span className="text-emerald-600 font-medium">Atribuído</span>
                     </p>
                   )}
+                </div>
+                <div className="mt-2">
+                  <AvailabilityBadge status={o.availability_status} />
                 </div>
                 <div className="flex justify-end mt-2">
                   <Button variant="outline" size="sm" className="h-7 text-[10px] rounded-lg" onClick={async (e) => { 
@@ -848,6 +854,42 @@ const AdminOrders = ({ onOrderTotalUpdate }: { onOrderTotalUpdate?: (count: numb
                       </div>
                     </div>
                   </div>
+
+                  {/* Disponibilidade indicada pela loja */}
+                  <div className="p-3 bg-indigo-50/40 border border-indigo-100 rounded-xl space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] uppercase font-bold text-indigo-600 tracking-wider flex items-center gap-1">
+                        <ShieldCheck className="h-3 w-3" /> Disponibilidade da Loja
+                      </p>
+                      <AvailabilityBadge status={selectedOrder.availability_status} />
+                    </div>
+                    {selectedOrder.vendor_notes ? (
+                      <div className="bg-white/60 p-2 rounded-lg border border-indigo-100">
+                        <p className="text-[10px] text-indigo-800 italic flex gap-1 items-start">
+                          <StickyNote className="h-2.5 w-2.5 shrink-0 mt-0.5" /> "{selectedOrder.vendor_notes}"
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-[10px] text-muted-foreground italic">Sem notas da loja.</p>
+                    )}
+                    {selectedOrder.availability_updated_at && (
+                      <p className="text-[10px] text-muted-foreground">
+                        Actualizado: {new Date(selectedOrder.availability_updated_at).toLocaleString('pt-PT')}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Chat / Feedback da Encomenda */}
+                  {user?.id && (
+                    <OrderChat
+                      orderId={selectedOrder.id}
+                      currentUserId={user.id}
+                      currentUserRole="admin"
+                      customerId={selectedOrder.customer_id}
+                      storeOwnerId={selectedOrder.stores?.owner_id}
+                      storeName={selectedOrder.stores?.name}
+                    />
+                  )}
 
                   {/* Assign Logistics */}
                   <div className="pt-4 border-t border-border">
@@ -1155,12 +1197,9 @@ const AdminAlerts = () => {
 
   const fetchNotifications = async () => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("notifications")
-        .select(`
-          *,
-          profiles:user_id (full_name)
-        `)
+        .select(`*, profiles:user_id (full_name)`)
         .order("created_at", { ascending: false })
         .limit(20);
       

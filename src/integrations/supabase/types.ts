@@ -124,9 +124,46 @@ export type Database = {
           },
         ]
       }
+      order_messages: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          order_id: string
+          sender_id: string
+          sender_role: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          order_id: string
+          sender_id: string
+          sender_role: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          order_id?: string
+          sender_id?: string
+          sender_role?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_messages_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
           accept_substitution: boolean | null
+          availability_status: string | null
+          availability_updated_at: string | null
           created_at: string
           customer_id: string
           delivery_address: string | null
@@ -146,9 +183,12 @@ export type Database = {
           suggestion_pending: boolean | null
           total: number
           updated_at: string
+          vendor_notes: string | null
         }
         Insert: {
           accept_substitution?: boolean | null
+          availability_status?: string | null
+          availability_updated_at?: string | null
           created_at?: string
           customer_id: string
           delivery_address?: string | null
@@ -168,9 +208,12 @@ export type Database = {
           suggestion_pending?: boolean | null
           total?: number
           updated_at?: string
+          vendor_notes?: string | null
         }
         Update: {
           accept_substitution?: boolean | null
+          availability_status?: string | null
+          availability_updated_at?: string | null
           created_at?: string
           customer_id?: string
           delivery_address?: string | null
@@ -190,6 +233,7 @@ export type Database = {
           suggestion_pending?: boolean | null
           total?: number
           updated_at?: string
+          vendor_notes?: string | null
         }
         Relationships: [
           {
