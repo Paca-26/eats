@@ -920,6 +920,71 @@ const VendorOrders = ({ storeId, onUpdate }: { storeId: string, onUpdate: () => 
                 </div>
               </div>
 
+              {/* Disponibilidade do Pedido */}
+              <div className="p-3 bg-gradient-to-br from-indigo-50/40 to-purple-50/40 border border-indigo-100 rounded-xl space-y-3">
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] uppercase font-bold text-indigo-600 tracking-wider flex items-center gap-1">
+                    <ShieldCheck className="h-3 w-3" /> Disponibilidade
+                  </p>
+                  <AvailabilityBadge status={selectedOrder.availability_status} />
+                </div>
+                <textarea
+                  value={vendorNotes}
+                  onChange={(e) => setVendorNotes(e.target.value)}
+                  placeholder="Informações adicionais para o cliente (ex: stock parcial de tomate, demora 30min adicional, etc.)"
+                  className="w-full min-h-[64px] p-3 rounded-xl bg-background border border-border text-xs font-body focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
+                  maxLength={500}
+                />
+                <div className="grid grid-cols-3 gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="rounded-xl h-9 text-[11px] font-body border-emerald-200 text-emerald-700 hover:bg-emerald-50 gap-1"
+                    disabled={savingAvailability}
+                    onClick={() => handleSetAvailability("available")}
+                  >
+                    <CheckCircle2 className="h-3 w-3" /> Disponível
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="rounded-xl h-9 text-[11px] font-body border-amber-200 text-amber-700 hover:bg-amber-50 gap-1"
+                    disabled={savingAvailability}
+                    onClick={() => handleSetAvailability("partial")}
+                  >
+                    <AlertTriangle className="h-3 w-3" /> Parcial
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="rounded-xl h-9 text-[11px] font-body border-rose-200 text-rose-700 hover:bg-rose-50 gap-1"
+                    disabled={savingAvailability}
+                    onClick={() => handleSetAvailability("unavailable")}
+                  >
+                    <XCircle className="h-3 w-3" /> Indisponível
+                  </Button>
+                </div>
+                {selectedOrder.availability_updated_at && (
+                  <p className="text-[10px] text-muted-foreground">
+                    Última actualização: {new Date(selectedOrder.availability_updated_at).toLocaleString("pt-PT")}
+                  </p>
+                )}
+              </div>
+
+              {/* Chat com Cliente */}
+              {user?.id && (
+                <OrderChat
+                  orderId={selectedOrder.id}
+                  currentUserId={user.id}
+                  currentUserRole="store"
+                  customerId={selectedOrder.customer_id}
+                  storeName={storeName}
+                />
+              )}
+
               {/* Status Actions */}
               {selectedOrder.status === "pending" && (
                 <div className="pt-2 border-t border-border mt-2 space-y-3">
