@@ -610,6 +610,43 @@ const ClientOrders = ({ onNewOrder }: { onNewOrder: () => void }) => {
             </div>
           </div>
 
+          {/* Disponibilidade indicada pela loja */}
+          <div className="mt-8 pt-6 border-t border-border space-y-3">
+            <h4 className="font-display font-bold text-foreground text-sm flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-indigo-500" /> Disponibilidade do Pedido
+            </h4>
+            <div className="bg-muted/20 p-4 rounded-2xl border border-border/50 space-y-2">
+              <AvailabilityBadge status={selectedOrder.availability_status} />
+              {selectedOrder.vendor_notes ? (
+                <div className="bg-background/60 p-3 rounded-xl border border-border/40">
+                  <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest mb-1">Notas da loja</p>
+                  <p className="text-sm font-body text-foreground italic leading-relaxed">"{selectedOrder.vendor_notes}"</p>
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground font-body">A loja ainda não adicionou notas.</p>
+              )}
+              {selectedOrder.availability_updated_at && (
+                <p className="text-[10px] text-muted-foreground">
+                  Actualizado em {new Date(selectedOrder.availability_updated_at).toLocaleString("pt-PT")}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {/* Conversa com a loja */}
+          {user?.id && (
+            <div className="mt-6">
+              <OrderChat
+                orderId={selectedOrder.id}
+                currentUserId={user.id}
+                currentUserRole="client"
+                customerId={selectedOrder.customer_id}
+                storeOwnerId={selectedOrder.stores?.owner_id}
+                storeName={selectedOrder.stores?.name}
+              />
+            </div>
+          )}
+
           {selectedOrder.status === "delivered" && (
             <div className="mt-8 pt-6 border-t border-border">
               <Button
