@@ -100,7 +100,7 @@ const AdminDashboard = () => {
       case "home": return <AdminHome />;
       case "alerts": return <AdminAlerts />;
       case "stores": return <AdminStores />;
-      case "orders": return <AdminOrders onOrderTotalUpdate={(count: number) => setNewOrdersCount(count)} />;
+      case "orders": return <AdminOrders onOrderTotalUpdate={(count: number) => setNewOrdersCount(count)} setNewOrdersCount={setNewOrdersCount} />;
       case "users": return <AdminUsers />;
       case "settings": return <AdminSettings />;
       default: return <AdminHome />;
