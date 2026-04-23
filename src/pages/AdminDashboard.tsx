@@ -568,7 +568,7 @@ const AdminOrders = ({ onOrderTotalUpdate, setNewOrdersCount }: { onOrderTotalUp
         .from('orders')
         .select(`
           *,
-          stores(name),
+          stores(name, owner_id),
           profiles:customer_id(full_name, phone)
         `, { count: 'exact' });
 
@@ -706,6 +706,9 @@ const AdminOrders = ({ onOrderTotalUpdate, setNewOrdersCount }: { onOrderTotalUp
                       Transportador: <span className="text-emerald-600 font-medium">Atribuído</span>
                     </p>
                   )}
+                </div>
+                <div className="mt-2">
+                  <AvailabilityBadge status={o.availability_status} />
                 </div>
                 <div className="flex justify-end mt-2">
                   <Button variant="outline" size="sm" className="h-7 text-[10px] rounded-lg" onClick={async (e) => { 
