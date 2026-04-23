@@ -1,5 +1,9 @@
 import { supabase } from "@/integrations/supabase/client";
 
+// Notifications and order_messages tables exist in DB but not yet in generated types.
+// We use a loose cast to bypass typing until types regenerate.
+const sb = supabase as any;
+
 export const sendNotification = async ({
   userId,
   title,
@@ -14,7 +18,7 @@ export const sendNotification = async ({
   orderId?: string;
 }) => {
   try {
-    const { error } = await supabase
+    const { error } = await sb
       .from("notifications")
       .insert({
         user_id: userId,
@@ -41,16 +45,15 @@ export const notifyAdmins = async ({
   orderId?: string;
 }) => {
   try {
-    // Fetch all admins
     const { data: adminRoles, error: rolesError } = await supabase
       .from("user_roles")
       .select("user_id")
       .eq("role", "admin");
-    
+
     if (rolesError) throw rolesError;
 
     if (adminRoles && adminRoles.length > 0) {
-      const notifications = adminRoles.map(role => ({
+      const notifications = adminRoles.map((role) => ({
         user_id: role.user_id,
         title,
         message,
@@ -58,9 +61,7 @@ export const notifyAdmins = async ({
         order_id: orderId
       }));
 
-      const { error } = await supabase
-        .from("notifications")
-        .insert(notifications);
+      const { error } = await sb.from("notifications").insert(notifications);
       if (error) throw error;
     }
   } catch (err) {
