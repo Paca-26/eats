@@ -793,10 +793,8 @@ const AdminOrders = ({ onOrderTotalUpdate, setNewOrdersCount }: { onOrderTotalUp
                           </div>
                         ))}
                       </div>
-                </div>
-                <div className="mt-2">
-                  <AvailabilityBadge status={o.availability_status} />
-                </div>
+                    )}
+                  </div>
 
                   {/* Pricing Breakdown */}
                   <div className="p-4 bg-muted/20 rounded-xl border border-border/50 space-y-2">
