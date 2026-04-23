@@ -513,7 +513,7 @@ const AdminStoreProducts = ({ store, onClose }: { store: { id: string, name: str
   );
 };
 
-const AdminOrders = ({ onOrderTotalUpdate }: { onOrderTotalUpdate?: (count: number) => void }) => {
+const AdminOrders = ({ onOrderTotalUpdate, setNewOrdersCount }: { onOrderTotalUpdate?: (count: number) => void; setNewOrdersCount?: (updater: (prev: number) => number) => void; }) => {
   const [filter, setFilter] = useState("all");
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);

@@ -4,7 +4,7 @@ import DashboardShell from "@/components/DashboardShell";
 import BottomNav, { BottomNavItem } from "@/components/BottomNav";
 import StatCard from "@/components/StatCard";
 import AnimatedTabContent from "@/components/AnimatedTabContent";
-import { ShoppingBag, Heart, MapPin, Clock, Home, Search, User, Bell, UtensilsCrossed, ShoppingCart, Beef, Fish, Star, ChevronRight, Package, CreditCard, HelpCircle, LogOut, Edit, Camera, Phone, Mail, Zap, Timer, Store, ArrowLeft, StickyNote, ShieldCheck, CheckCircle2 } from "lucide-react";
+import { ShoppingBag, Heart, MapPin, Clock, Home, Search, User, Bell, UtensilsCrossed, ShoppingCart, Beef, Fish, Star, ChevronRight, Package, CreditCard, HelpCircle, LogOut, Edit, Camera, Phone, Mail, Zap, Timer, Store, ArrowLeft, StickyNote, ShieldCheck, CheckCircle2, Loader2, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";

@@ -4,7 +4,7 @@ import DashboardShell from "@/components/DashboardShell";
 import BottomNav, { BottomNavItem } from "@/components/BottomNav";
 import StatCard from "@/components/StatCard";
 import AnimatedTabContent from "@/components/AnimatedTabContent";
-import { Truck, Package, MapPin, Clock, BarChart3, Navigation, CheckCircle2, Settings, Phone, Star, ChevronRight, AlertCircle, Fuel, Route, User, Calendar, Shield, Bell, Edit, Save, LogOut, XCircle, Loader2, Timer, StickyNote, ShieldCheck, Users, X } from "lucide-react";
+import { Truck, Package, MapPin, Clock, BarChart3, Navigation, CheckCircle2, Settings, Phone, Star, ChevronRight, AlertCircle, Fuel, Route, User, Calendar, Shield, Bell, Edit, Save, LogOut, XCircle, Loader2, Timer, StickyNote, ShieldCheck, Users, X, Store } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useDemoAuth } from "@/contexts/DemoAuthContext";
 import { useAuth } from "@/contexts/AuthContext";
