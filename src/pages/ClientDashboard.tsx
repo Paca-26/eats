@@ -12,6 +12,8 @@ import { Link } from "react-router-dom";
 import { useDemoAuth } from "@/contexts/DemoAuthContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDisplayUser } from "@/hooks/useDisplayUser";
+import OrderChat from "@/components/OrderChat";
+import AvailabilityBadge from "@/components/AvailabilityBadge";
 import { supabase } from "@/integrations/supabase/client";
 import { notifyAdmins } from "@/lib/notifications";
 import heroClient from "@/assets/hero-client.jpg";
@@ -328,6 +330,7 @@ const ClientOrders = ({ onNewOrder }: { onNewOrder: () => void }) => {
   const [selectedOrder, setSelectedOrder] = useState<any | null>(null);
   const [orderItems, setOrderItems] = useState<any[]>([]);
   const [loadingItems, setLoadingItems] = useState(false);
+  const { user } = useAuth();
 
   useEffect(() => {
     const fetchOrders = async () => {
