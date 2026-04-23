@@ -793,8 +793,10 @@ const AdminOrders = ({ onOrderTotalUpdate, setNewOrdersCount }: { onOrderTotalUp
                           </div>
                         ))}
                       </div>
-                    )}
-                  </div>
+                </div>
+                <div className="mt-2">
+                  <AvailabilityBadge status={o.availability_status} />
+                </div>
 
                   {/* Pricing Breakdown */}
                   <div className="p-4 bg-muted/20 rounded-xl border border-border/50 space-y-2">
@@ -851,6 +853,42 @@ const AdminOrders = ({ onOrderTotalUpdate, setNewOrdersCount }: { onOrderTotalUp
                       </div>
                     </div>
                   </div>
+
+                  {/* Disponibilidade indicada pela loja */}
+                  <div className="p-3 bg-indigo-50/40 border border-indigo-100 rounded-xl space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-[10px] uppercase font-bold text-indigo-600 tracking-wider flex items-center gap-1">
+                        <ShieldCheck className="h-3 w-3" /> Disponibilidade da Loja
+                      </p>
+                      <AvailabilityBadge status={selectedOrder.availability_status} />
+                    </div>
+                    {selectedOrder.vendor_notes ? (
+                      <div className="bg-white/60 p-2 rounded-lg border border-indigo-100">
+                        <p className="text-[10px] text-indigo-800 italic flex gap-1 items-start">
+                          <StickyNote className="h-2.5 w-2.5 shrink-0 mt-0.5" /> "{selectedOrder.vendor_notes}"
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="text-[10px] text-muted-foreground italic">Sem notas da loja.</p>
+                    )}
+                    {selectedOrder.availability_updated_at && (
+                      <p className="text-[10px] text-muted-foreground">
+                        Actualizado: {new Date(selectedOrder.availability_updated_at).toLocaleString('pt-PT')}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Chat / Feedback da Encomenda */}
+                  {user?.id && (
+                    <OrderChat
+                      orderId={selectedOrder.id}
+                      currentUserId={user.id}
+                      currentUserRole="admin"
+                      customerId={selectedOrder.customer_id}
+                      storeOwnerId={selectedOrder.stores?.owner_id}
+                      storeName={selectedOrder.stores?.name}
+                    />
+                  )}
 
                   {/* Assign Logistics */}
                   <div className="pt-4 border-t border-border">
