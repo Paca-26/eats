@@ -135,7 +135,7 @@ const LogisticsHome = () => {
       // Fetch pending orders
       const { data: ordersData, error } = await supabase
         .from('orders')
-        .select('*, stores(name), profiles:customer_id(full_name)')
+        .select('*, stores(name)')
         .eq('logistics_id', user.id)
         .in('logistics_status', ['assigned', 'accepted', 'in_transit'])
         .order('updated_at', { ascending: false });
@@ -503,6 +503,9 @@ const LogisticsDeliveries = ({ onUpdate }: { onUpdate?: () => void }) => {
                   </Button>
                 ) : null}
               </div>
+
+              {/* Private chat with admin */}
+              <LogisticsChatWrapper orderId={selectedOrder.id} />
             </div>
           </div>
         </div>
