@@ -620,7 +620,32 @@ const AdminOrders = ({ onOrderTotalUpdate, setNewOrdersCount }: { onOrderTotalUp
       // Mark as seen by admin when assigning
       await supabase.from('orders').update({ seen_by_admin: true }).eq('id', orderId);
 
-      toast({ title: "Sucesso", description: "Transportador atribuído com sucesso." });
+      // Notify courier with order details (without customer name/phone)
+      try {
+        const shortId = orderId.substring(0, 6).toUpperCase();
+        await sendNotification({
+          userId: courierId,
+          title: "Nova entrega atribuída",
+          message: `Foi-lhe atribuída a encomenda #${shortId}. Abra o painel de Entregas para ver os detalhes.`,
+          type: "logistics_assignment",
+          orderId,
+        });
+
+        // Auto-send a welcome chat message from admin if user is signed in
+        const { data: { user: adminUser } } = await supabase.auth.getUser();
+        if (adminUser) {
+          await (supabase as any).from("logistics_messages").insert({
+            order_id: orderId,
+            sender_id: adminUser.id,
+            sender_role: "admin",
+            message: `Encomenda #${shortId} atribuída. Use este chat para qualquer questão.`,
+          });
+        }
+      } catch (notifyErr) {
+        console.error("Erro ao notificar transportador:", notifyErr);
+      }
+
+      toast({ title: "Sucesso", description: "Transportador atribuído e notificado." });
       fetchOrders(page, filter);
       setSelectedOrder(null);
     } catch (err: any) {
