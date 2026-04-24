@@ -225,8 +225,8 @@ const LogisticsHome = () => {
               </div>
             </div>
             <p className="text-xs text-muted-foreground font-body">De: <span className="text-foreground font-semibold">{d.stores?.name || 'Loja'}</span></p>
-            <p className="text-xs text-muted-foreground font-body">Para: <span className="text-foreground font-semibold">{d.profiles?.full_name || 'Cliente'}</span></p>
-            <p className="text-xs text-muted-foreground font-body flex items-center gap-1 mt-1"><MapPin className="h-3 w-3" /> {d.delivery_address}</p>
+              <p className="text-xs text-muted-foreground font-body">Para: <span className="text-foreground font-semibold">Cliente</span></p>
+              <p className="text-xs text-muted-foreground font-body flex items-center gap-1 mt-1"><MapPin className="h-3 w-3" /> {d.delivery_address}</p>
           </div>
         ))}
       </div>
