@@ -235,6 +235,22 @@ const LogisticsHome = () => {
   );
 };
 
+// Wrapper that loads current user id and renders the private chat with admin
+const LogisticsChatWrapper = ({ orderId }: { orderId: string }) => {
+  const [userId, setUserId] = useState<string | null>(null);
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => setUserId(user?.id ?? null));
+  }, []);
+  if (!userId) return null;
+  return (
+    <LogisticsChat
+      orderId={orderId}
+      currentUserId={userId}
+      currentUserRole="logistics"
+    />
+  );
+};
+
 const LogisticsDeliveries = ({ onUpdate }: { onUpdate?: () => void }) => {
   const [filter, setFilter] = useState("pending");
   const [orders, setOrders] = useState<any[]>([]);
