@@ -6,7 +6,9 @@ import StatCard from "@/components/StatCard";
 import AnimatedTabContent from "@/components/AnimatedTabContent";
 import { Users, Store, Package, MapPin, ShieldCheck, TrendingUp, Settings, BarChart3, Bell, Search, ChevronRight, Star, Eye, CheckCircle2, XCircle, Clock, AlertCircle, Edit, Shield, Mail, Phone, Save, Trash2, LogOut, Loader2, Truck, Timer, StickyNote, Zap, MessageCircle, Send } from "lucide-react";
 import OrderChat from "@/components/OrderChat";
+import LogisticsChat from "@/components/LogisticsChat";
 import AvailabilityBadge from "@/components/AvailabilityBadge";
+import { sendNotification } from "@/lib/notifications";
 import { Button } from "@/components/ui/button";
 import { useDemoAuth } from "@/contexts/DemoAuthContext";
 import { useAuth } from "@/contexts/AuthContext";
@@ -618,7 +620,32 @@ const AdminOrders = ({ onOrderTotalUpdate, setNewOrdersCount }: { onOrderTotalUp
       // Mark as seen by admin when assigning
       await supabase.from('orders').update({ seen_by_admin: true }).eq('id', orderId);
 
-      toast({ title: "Sucesso", description: "Transportador atribuído com sucesso." });
+      // Notify courier with order details (without customer name/phone)
+      try {
+        const shortId = orderId.substring(0, 6).toUpperCase();
+        await sendNotification({
+          userId: courierId,
+          title: "Nova entrega atribuída",
+          message: `Foi-lhe atribuída a encomenda #${shortId}. Abra o painel de Entregas para ver os detalhes.`,
+          type: "logistics_assignment",
+          orderId,
+        });
+
+        // Auto-send a welcome chat message from admin if user is signed in
+        const { data: { user: adminUser } } = await supabase.auth.getUser();
+        if (adminUser) {
+          await (supabase as any).from("logistics_messages").insert({
+            order_id: orderId,
+            sender_id: adminUser.id,
+            sender_role: "admin",
+            message: `Encomenda #${shortId} atribuída. Use este chat para qualquer questão.`,
+          });
+        }
+      } catch (notifyErr) {
+        console.error("Erro ao notificar transportador:", notifyErr);
+      }
+
+      toast({ title: "Sucesso", description: "Transportador atribuído e notificado." });
       fetchOrders(page, filter);
       setSelectedOrder(null);
     } catch (err: any) {
@@ -928,6 +955,18 @@ const AdminOrders = ({ onOrderTotalUpdate, setNewOrdersCount }: { onOrderTotalUp
                       </div>
                     )}
                   </div>
+
+                  {/* Private Admin ⇄ Logistics Chat */}
+                  {selectedOrder.logistics_id && user?.id && (
+                    <div className="pt-4 border-t border-border">
+                      <LogisticsChat
+                        orderId={selectedOrder.id}
+                        currentUserId={user.id}
+                        currentUserRole="admin"
+                        logisticsId={selectedOrder.logistics_id}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
