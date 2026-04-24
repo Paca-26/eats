@@ -251,7 +251,7 @@ const LogisticsDeliveries = ({ onUpdate }: { onUpdate?: () => void }) => {
 
     let query = supabase
       .from("orders")
-      .select("*, stores(name, logo_url), profiles:customer_id(full_name, phone)")
+      .select("*, stores(name, logo_url, phone)")
       .eq("logistics_id", user.id);
 
     const { data, error } = await query;
@@ -341,7 +341,7 @@ const LogisticsDeliveries = ({ onUpdate }: { onUpdate?: () => void }) => {
               </div>
               <div className="space-y-1">
                 <p className="text-xs font-body text-muted-foreground">Loja: <span className="text-foreground font-semibold">{d.stores?.name || 'Loja'}</span></p>
-                <p className="text-xs font-body text-muted-foreground">Cliente: <span className="text-foreground font-semibold">{d.profiles?.full_name || 'Cliente'}</span></p>
+                <p className="text-xs font-body text-muted-foreground">Cliente: <span className="text-foreground font-semibold">Protegido</span></p>
                 <p className="text-xs font-body text-muted-foreground flex items-center gap-1"><MapPin className="h-3 w-3" /> {d.delivery_address}</p>
               </div>
               <div className="flex items-center justify-between mt-3 pt-3 border-t border-border">
@@ -386,20 +386,20 @@ const LogisticsDeliveries = ({ onUpdate }: { onUpdate?: () => void }) => {
                 </div>
                 <div className="relative">
                   <div className="absolute -left-6 top-1 w-3 h-3 rounded-full bg-emerald-500 border-2 border-white shadow-sm" />
-                  <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-0.5">Entrega (Cliente)</p>
-                  <p className="text-sm font-bold text-foreground">{selectedOrder.profiles?.full_name || 'Cliente'}</p>
-                  <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
+                  <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider mb-0.5">Entrega</p>
+                  <p className="text-sm font-bold text-foreground flex items-center gap-1.5">
+                    <Shield className="h-3.5 w-3.5 text-muted-foreground" /> Cliente protegido
+                  </p>
+                  <p className="text-[10px] text-muted-foreground italic mt-0.5">Dados pessoais ocultos por privacidade</p>
+                  <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-1">
                     <MapPin className="h-3 w-3 text-red-500" /> {selectedOrder.delivery_address}
                   </p>
                 </div>
               </div>
 
-              {/* Contact Actions */}
-              <div className="grid grid-cols-2 gap-2">
-                <Button variant="outline" className="h-10 rounded-xl gap-2 font-body text-xs" onClick={() => window.location.href = `tel:${selectedOrder.profiles?.phone}`}>
-                  <Phone className="h-3.5 w-3.5 text-emerald-600" /> Ligar Cliente
-                </Button>
-                <Button variant="outline" className="h-10 rounded-xl gap-2 font-body text-xs" disabled={!selectedOrder.stores?.phone}>
+              {/* Contact Actions — only store, customer contact is hidden */}
+              <div className="grid grid-cols-1 gap-2">
+                <Button variant="outline" className="h-10 rounded-xl gap-2 font-body text-xs" disabled={!selectedOrder.stores?.phone} onClick={() => selectedOrder.stores?.phone && (window.location.href = `tel:${selectedOrder.stores.phone}`)}>
                   <Store className="h-3.5 w-3.5 text-blue-600" /> Ligar Loja
                 </Button>
               </div>
