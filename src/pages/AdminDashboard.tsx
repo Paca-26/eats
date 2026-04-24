@@ -955,6 +955,18 @@ const AdminOrders = ({ onOrderTotalUpdate, setNewOrdersCount }: { onOrderTotalUp
                       </div>
                     )}
                   </div>
+
+                  {/* Private Admin ⇄ Logistics Chat */}
+                  {selectedOrder.logistics_id && user?.id && (
+                    <div className="pt-4 border-t border-border">
+                      <LogisticsChat
+                        orderId={selectedOrder.id}
+                        currentUserId={user.id}
+                        currentUserRole="admin"
+                        logisticsId={selectedOrder.logistics_id}
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
